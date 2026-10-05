@@ -1273,6 +1273,13 @@ button:disabled {
   font-size: 10.5px;
   color: var(--text-3);
 }
+.vote-role {
+  font-style: normal;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  color: var(--text-4);
+  letter-spacing: 0.02em;
+}
 .vote b {
   font-weight: 500;
   color: var(--text-2);

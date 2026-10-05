@@ -119,9 +119,28 @@ export function PriceLadder({
   );
 }
 
+/** Role of each timeframe in the intraday model (older signals have no roles). */
+const TF_ROLE: Record<string, string> = {
+  DAILY: 'context',
+  H4: 'context',
+  H1: 'execution',
+  M15: 'confirm',
+};
+
+/** Signals from the current model vote on Daily, H4, H1 and M15 only. */
+export function isContextModel(votes: TimeframeVote[]) {
+  return !votes.some(
+    (v) => v.timeframe === 'MONTHLY' || v.timeframe === 'WEEKLY'
+  );
+}
+
 export function TimeframeVotes({ votes }: { votes: TimeframeVote[] }) {
+  const roles = isContextModel(votes);
   return (
-    <div className="votes">
+    <div
+      className="votes"
+      style={{ gridTemplateColumns: `repeat(${votes.length}, minmax(0, 1fr))` }}
+    >
       {votes.map((vote) => (
         <div
           key={vote.timeframe}
@@ -133,6 +152,9 @@ export function TimeframeVotes({ votes }: { votes: TimeframeVote[] }) {
           <span className="num">
             {vote.score > 0 ? `+${vote.score}` : vote.score}
           </span>
+          {roles && TF_ROLE[vote.timeframe] && (
+            <em className="vote-role">{TF_ROLE[vote.timeframe]}</em>
+          )}
         </div>
       ))}
     </div>
@@ -319,7 +341,11 @@ export function SignalTicket({
         <div className="ticket-votes">
           <div className="ticket-votes-head">
             <span>Timeframe votes</span>
-            <span>monthly → M15</span>
+            <span>
+              {isContextModel(p.timeframeBias)
+                ? 'D · H4 context → H1 execution → M15'
+                : 'monthly → M15'}
+            </span>
           </div>
           <TimeframeVotes votes={p.timeframeBias} />
         </div>

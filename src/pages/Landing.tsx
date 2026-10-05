@@ -41,19 +41,17 @@ function useExampleSignals(): Prediction[] {
         confidence: 64,
         entryLow: 1.1249,
         entryHigh: 1.1261,
-        targetPrice: 1.1201,
-        invalidationPrice: 1.1284,
-        stopPips: 29,
-        targetPips: 54,
-        riskReward: 1.86,
+        targetPrice: 1.12,
+        invalidationPrice: 1.128,
+        stopPips: 25,
+        targetPips: 55,
+        riskReward: 2.2,
         atrPips: 18.4,
         timeframeBias: [
-          { timeframe: 'MONTHLY', bias: 'NEUTRAL', score: -10 },
-          { timeframe: 'WEEKLY', bias: 'BEARISH', score: -34 },
           { timeframe: 'DAILY', bias: 'BEARISH', score: -74 },
           { timeframe: 'H4', bias: 'BEARISH', score: -71 },
           { timeframe: 'H1', bias: 'BEARISH', score: -54 },
-          { timeframe: 'M15', bias: 'NEUTRAL', score: -8 },
+          { timeframe: 'M15', bias: 'BEARISH', score: -38 },
         ],
       },
       {
@@ -65,17 +63,15 @@ function useExampleSignals(): Prediction[] {
         confidence: 58,
         entryLow: 157.74,
         entryHigh: 157.88,
-        targetPrice: 158.42,
-        invalidationPrice: 157.46,
-        stopPips: 35,
-        targetPips: 61,
-        riskReward: 1.74,
+        targetPrice: 158.43,
+        invalidationPrice: 157.53,
+        stopPips: 28,
+        targetPips: 62,
+        riskReward: 2.21,
         atrPips: 21.7,
         timeframeBias: [
-          { timeframe: 'MONTHLY', bias: 'BULLISH', score: 41 },
-          { timeframe: 'WEEKLY', bias: 'BULLISH', score: 28 },
-          { timeframe: 'DAILY', bias: 'NEUTRAL', score: 9 },
-          { timeframe: 'H4', bias: 'BULLISH', score: 22 },
+          { timeframe: 'DAILY', bias: 'BULLISH', score: 36 },
+          { timeframe: 'H4', bias: 'BULLISH', score: 48 },
           { timeframe: 'H1', bias: 'BULLISH', score: 37 },
           { timeframe: 'M15', bias: 'BULLISH', score: 44 },
         ],
@@ -150,11 +146,12 @@ function Hero() {
           <span>with the levels written down and the results kept.</span>
         </h1>
         <p className="lp-hero-sub">
-          FXSignal reads six timeframes on two major pairs and publishes one
-          call per window: direction, entry zone, invalidation, target and the
-          reasoning. When the window closes, the call is replayed against the
-          price path and goes into a public track record — hits and misses
-          alike.
+          FXSignal takes its direction from the daily and 4-hour charts,
+          executes on the 1-hour and confirms on the 15-minute, then publishes
+          one call per window on two major pairs: direction, entry zone,
+          invalidation, a target of at least 2R, and the reasoning. When the
+          window closes, the call is replayed against the price path and goes
+          into a public track record — hits and misses alike.
         </p>
         <div className="lp-hero-ctas">
           <Link to="/register" className="btn btn-primary btn-lg">
@@ -194,7 +191,7 @@ function Hero() {
 function Facts() {
   const facts = [
     ['2 pairs', 'EUR/USD and USD/JPY, nothing else'],
-    ['6 timeframes', 'Monthly down to 15-minute'],
+    ['D · H4 → H1 → M15', 'Context, execution, confirmation'],
     ['4 windows a day', '00, 06, 12, 18 UTC while FX trades'],
     ['Every call scored', 'Replayed against M15 candles'],
   ];
@@ -217,17 +214,21 @@ function Method() {
     {
       n: '01',
       title: 'Read the structure',
-      copy: 'EMA 20/50/200, RSI, ATR and swing range on six timeframes. Higher timeframes carry more weight, so a noisy 15-minute chart cannot flip the call on its own.',
-      list: ['monthly 30 · weekly 25', 'daily 20 · H4 12', 'H1 8 · M15 5'],
+      copy: 'EMA 20/50/200, RSI, ATR and swing structure on four timeframes, each with one job. The daily and 4-hour set the direction; the 1-hour must agree before anything is executed; the 15-minute only confirms the timing.',
+      list: [
+        'context · daily 55 / H4 45',
+        'execution · H1 must not oppose',
+        'confirmation · M15 adjusts confidence',
+      ],
     },
     {
       n: '02',
       title: 'Commit to levels',
-      copy: 'The entry zone, invalidation and target come from H1 volatility and the nearest structure, sized for at least 1.5R. Scheduled high-impact releases inside the window lower the confidence.',
+      copy: 'The entry zone and stop come from H1 volatility and the last ten H1 bars of structure. The target is set at least twice the risk away. If the structure needs a stop too wide for 1:2, there is no trade that window.',
       list: [
-        'entry zone 6–30 pips',
-        'invalidation 12–80 pips',
-        'target ≥ 1.5R',
+        'entry zone 8–28 pips (H1 ATR)',
+        'stop beyond H1 structure, ≤ 60 pips',
+        'target ≥ 2R, always',
       ],
     },
     {
@@ -291,7 +292,7 @@ function Anatomy() {
     ],
     [
       'Timeframe votes',
-      'Six scores from −100 to +100. When monthly and M15 point opposite ways, you see it.',
+      'Daily and H4 (context), H1 (execution) and M15 (confirmation), each scored −100 to +100. When H1 fights the context, there is no trade.',
     ],
   ];
   return (

@@ -28,70 +28,100 @@ export default function Methodology() {
 
       <article className="doc">
         <section>
-          <h2>1. Six timeframes, weighted top-down</h2>
+          <h2>1. Context, execution, confirmation</h2>
           <p>
-            For each pair the engine pulls monthly, weekly, daily, H4, H1 and
-            M15 candles and computes EMA 20/50/200, RSI 14, ATR 14 and the
-            20-bar swing range. Each timeframe gets a bias score from −100 to
-            +100. Higher timeframes carry more weight, so a fast chart can
-            refine a call but not overturn the trend on its own.
+            Each timeframe has one job. For each pair the engine computes EMA
+            20/50/200, RSI 14, ATR 14 and swing structure on four timeframes and
+            scores each from −100 to +100.
           </p>
           <div className="table-wrap">
             <table className="table">
               <thead>
                 <tr>
                   <th>Timeframe</th>
-                  <th className="r">Weight</th>
                   <th>Role</th>
+                  <th>What it decides</th>
                 </tr>
               </thead>
               <tbody>
                 {[
-                  ['Monthly', 30, 'Regime'],
-                  ['Weekly', 25, 'Regime'],
-                  ['Daily', 20, 'Trend for the session'],
-                  ['H4', 12, 'Swing structure'],
-                  ['H1', 8, 'Volatility (ATR) and structure for levels'],
-                  ['M15', 5, 'Timing and current price'],
-                ].map(([tf, w, role]) => (
+                  ['Daily', 'Context (55%)', 'The direction, together with H4'],
+                  [
+                    'H4',
+                    'Context (45%)',
+                    'The direction, together with the daily',
+                  ],
+                  [
+                    'H1',
+                    'Execution',
+                    'Whether to trade at all, the entry zone and the stop',
+                  ],
+                  [
+                    'M15',
+                    'Confirmation',
+                    'Timing: raises or lowers confidence, never sets direction',
+                  ],
+                ].map(([tf, role, decides]) => (
                   <tr key={tf}>
                     <td className="strong">{tf}</td>
-                    <td className="r num">{w}</td>
                     <td>{role}</td>
+                    <td>{decides}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <p>
-            A weighted score of +12 or more publishes <strong>Long</strong>, −12
-            or less <strong>Short</strong>, anything between{' '}
-            <strong>Neutral</strong>. Confidence (15–92%) rises with timeframe
-            agreement and falls when fast momentum disagrees with the trend or
-            when a high-impact release lands inside the window (−10 per high, −3
-            per medium, capped at −20).
-          </p>
+          <ul>
+            <li>
+              A weighted daily + H4 score of +15 or more is{' '}
+              <strong>Long</strong>, −15 or less <strong>Short</strong>,
+              anything between <strong>Neutral</strong> (no trade).
+            </li>
+            <li>
+              If H1 points against that context, there is no execution that
+              window: the call is published as Neutral with the reason.
+            </li>
+            <li>
+              Confidence (15–92%) rises when daily and H4 agree, when H1 is
+              aligned and when M15 already confirms. It falls when M15 disagrees
+              and when a high-impact release lands inside the window (−10 per
+              high, −3 per medium, capped at −20).
+            </li>
+            <li>
+              Monthly and weekly charts are not used for intraday calls; they
+              still drive the weekend outlook.
+            </li>
+          </ul>
         </section>
 
         <section>
-          <h2>2. Levels from volatility and structure</h2>
+          <h2>2. Levels: H1 execution, at least 1:2</h2>
           <ul>
             <li>
               The entry zone is centred on the current price and sized from H1
-              ATR (6–30 pips wide).
+              ATR (8–28 pips wide). Execute inside it on H1, after an M15 candle
+              closes in the trade direction.
             </li>
             <li>
-              The invalidation sits beyond the recent swing, 12–80 pips from the
-              zone.
+              The invalidation sits 3 pips beyond the last ten H1 bars of
+              structure, and at least 12 pips past the zone.
             </li>
             <li>
-              The target is set for at least 1.5R, 20–120 pips beyond the zone.
+              The target is at least <strong>2× the risk</strong>, both measured
+              from the middle of the zone, and is rounded outward so rounding
+              can never cost reward.
             </li>
             <li>
-              When the model review is enabled, a language model may adjust
-              direction, confidence and levels, and writes the session playbook.
-              Its levels pass through the same guard-rails, and reward:risk is
-              recomputed from whatever is finally published.
+              If the structural stop would be wider than 60 pips, 1:2 cannot fit
+              inside one window, so the engine stands aside instead of
+              publishing a worse ratio.
+            </li>
+            <li>
+              When the model review is enabled, a language model may keep the
+              direction or downgrade it to Neutral, but never flip it or trade a
+              window the engine stood aside on. Its levels go through the same
+              limits; a target closer than 2R is pushed out to 2R, and if that
+              does not fit, the engine's levels are used.
             </li>
           </ul>
         </section>
