@@ -14,8 +14,13 @@ import type {
   WeeklyOutlook,
 } from './types';
 
-export const API_BASE =
-  import.meta.env.VITE_API_URL ?? 'http://localhost:4004/api';
+// VITE_API_URL wins when set. Otherwise production builds talk to the hosted
+// API and `npm run dev` talks to the local one.
+export const API_BASE: string =
+  import.meta.env.VITE_API_URL ??
+  (import.meta.env.PROD
+    ? 'https://fxsignal.duckdns.org/api'
+    : 'http://localhost:4004/api');
 
 const TOKEN_KEY = 'fxsignal_token';
 

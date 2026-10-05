@@ -6,11 +6,10 @@ React + Vite + TypeScript frontend for FXSignal: intraday EUR/USD and USD/JPY si
 
 ```bash
 npm install
-cp .env.example .env   # point VITE_API_URL at the FXSignal API
 npm run dev
 ```
 
-Open http://localhost:5173. The app expects the FXSignal API running at `VITE_API_URL` (default `http://localhost:4004/api`).
+Open http://localhost:5173. In development the app calls the local API at `http://localhost:4004/api`; production builds call `https://fxsignal.duckdns.org/api`. Set `VITE_API_URL` to override either.
 
 ## Build
 
