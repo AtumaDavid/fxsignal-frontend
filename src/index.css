@@ -2973,3 +2973,31 @@ button:disabled {
 .live-flush .live {
   margin: 0;
 }
+
+/* ---- Open trades ------------------------------------------------------------ */
+
+.open-trades {
+  display: grid;
+}
+.open-trade {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px 4px;
+  border-top: 1px solid var(--line);
+}
+.open-trade:first-child {
+  border-top: 0;
+}
+.open-trade-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: 12.5px;
+}
+.open-trade-head .btn {
+  margin-left: auto;
+}
+.open-trade .ladder {
+  padding: 4px 0 12px;
+}

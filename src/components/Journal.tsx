@@ -8,7 +8,7 @@ import { Empty } from './ui/Empty';
 import { getHistory } from '../lib/api';
 import {
   dayDate,
-  directionLabel,
+  callLabel,
   directionTone,
   price,
   signedPips,
@@ -211,7 +211,7 @@ export function Journal() {
                     <td className="strong mono">{p.pairCode}</td>
                     <td>
                       <span className={`tag tag-${directionTone(p.direction)}`}>
-                        {directionLabel(p.direction)}
+                        {callLabel(p)}
                       </span>
                     </td>
                     <td>{p.session}</td>

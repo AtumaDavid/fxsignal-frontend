@@ -144,8 +144,9 @@ export default function Methodology() {
           </p>
           <ol>
             <li>
-              No position exists until price trades into the entry zone; fills
-              are taken at its midpoint.
+              No position exists until price trades into the entry zone during
+              the signal's window; fills are taken at its midpoint. No fill in
+              the window means no trade.
             </li>
             <li>
               After the fill, whichever of invalidation or target trades first
@@ -153,8 +154,19 @@ export default function Methodology() {
               invalidation is assumed first.
             </li>
             <li>
-              If neither is reached, the signal expires and is marked to the
-              last close.
+              A trade that filled is followed after its window closes, even when
+              newer signals are published, until its target or invalidation
+              trades. Anything still open at the Friday close is closed there at
+              the last price, since day trades are not held over the weekend
+              gap.
+            </li>
+            <li>
+              If a new window points the same way while that trade is still
+              open, it is published as a <strong>Hold</strong>: no second entry,
+              manage the open trade. Holds are not scored separately, so one
+              move is never counted twice. A new call in the opposite direction
+              is published with a warning to close or reduce the open trade
+              first.
             </li>
             <li>Neutral calls are stand-asides and are never scored.</li>
             <li>

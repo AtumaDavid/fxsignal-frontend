@@ -6,7 +6,7 @@ import { SignalDrawer } from '../../components/SignalDrawer';
 import { Empty } from '../../components/ui/Empty';
 import {
   dayDate,
-  directionLabel,
+  callLabel,
   directionTone,
   price,
   signedPips,
@@ -95,7 +95,13 @@ export default function MyJournal() {
               {summary ? signedPips(summary.engineNetPips) : '—'}
             </div>
             <span className="kpi-note">
-              {summary ? `${summary.engineScored} scored by the engine` : '—'}
+              {data
+                ? `${data.trades.filter((t) => t.prediction.outcome?.status === 'HIT').length} targets · ${
+                    data.trades.filter(
+                      (t) => t.prediction.outcome?.status === 'MISSED'
+                    ).length
+                  } stops · ${data.trades.filter((t) => (t.prediction.outcome?.status ?? 'PENDING') === 'PENDING').length} open`
+                : '—'}
             </span>
           </div>
         </section>
@@ -173,7 +179,7 @@ export default function MyJournal() {
                           <span
                             className={`tag tag-${directionTone(p.direction)}`}
                           >
-                            {directionLabel(p.direction)}
+                            {callLabel(p)}
                           </span>
                         </td>
                         <td>{t.side === 'LONG' ? 'Long' : 'Short'}</td>

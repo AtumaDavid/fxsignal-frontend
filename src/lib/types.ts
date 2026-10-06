@@ -71,6 +71,8 @@ export interface Prediction {
   createdAt: string;
   outcome: PredictionOutcome | null;
   live?: LiveProgress | null;
+  /** "Hold" call: id of the still-open earlier signal this window manages. */
+  continuesId?: string | null;
 }
 
 export interface MarketEvent {
@@ -129,6 +131,8 @@ export interface DashboardData {
   killzoneLabel: string | null;
   playbookHint: string | null;
   predictions: Prediction[];
+  /** Earlier signals that triggered and are still running past their window. */
+  openTrades?: Prediction[];
   history: Prediction[];
   events: MarketEvent[];
   prices: TickerPrice[];

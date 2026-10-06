@@ -3,6 +3,8 @@ import { Icon } from './Icon';
 import { Spinner } from './ui/Empty';
 import { price, signedPips } from '../lib/format';
 import { useJournal } from '../lib/journal';
+import { useDashboard } from '../lib/dashboard';
+import { readSizerPrefs, sizeFor } from './PositionSizer';
 import type { Prediction, UserTrade } from '../lib/types';
 
 function toInput(value: number | null | undefined) {
@@ -14,6 +16,26 @@ function parse(value: string) {
   if (!trimmed) return null;
   const n = Number(trimmed);
   return Number.isFinite(n) ? n : Number.NaN;
+}
+
+/**
+ * Where the engine's own trade on this signal closed: target, stop, or the
+ * mark-to-close price. Null while it is open or when it never filled.
+ */
+export function engineExit(
+  p: Prediction
+): { price: number; label: string } | null {
+  const o = p.outcome;
+  if (!o || o.resolvedPrice === null) return null;
+  if (o.status === 'HIT') return { price: o.resolvedPrice, label: 'target' };
+  if (o.status === 'MISSED') return { price: o.resolvedPrice, label: 'stop' };
+  if (o.status === 'EXPIRED' && o.movementPips !== null)
+    return { price: o.resolvedPrice, label: 'close' };
+  return null;
+}
+
+function precision(p: Prediction) {
+  return p.pairCode === 'EUR/USD' ? 5 : 3;
 }
 
 function TradeForm({
@@ -30,9 +52,31 @@ function TradeForm({
   const [side, setSide] = useState<'LONG' | 'SHORT' | ''>(
     trade?.side ?? (neutral ? '' : (prediction.direction as 'LONG' | 'SHORT'))
   );
-  const [entry, setEntry] = useState(toInput(trade?.entryPrice));
-  const [exit, setExit] = useState(toInput(trade?.exitPrice));
-  const [lots, setLots] = useState(toInput(trade?.lots));
+  const { data } = useDashboard();
+  // New entries start from what the signal published, so logging a trade
+  // that followed the plan is one click: entry at the zone middle, exit at
+  // the engine's result once it has one, size from the calculator settings.
+  const planned = (() => {
+    const mid = (prediction.entryLow + prediction.entryHigh) / 2;
+    const size = sizeFor(
+      prediction,
+      readSizerPrefs(),
+      (pair) => data?.prices.find((q) => q.pairCode === pair)?.price ?? null
+    );
+    return {
+      entry: mid.toFixed(precision(prediction)),
+      exit: engineExit(prediction)?.price.toFixed(precision(prediction)) ?? '',
+      lots: size.lots && size.lots > 0 ? size.lots.toFixed(2) : '',
+    };
+  })();
+  const prefilled = !trade;
+  const [entry, setEntry] = useState(
+    trade ? toInput(trade.entryPrice) : planned.entry
+  );
+  const [exit, setExit] = useState(
+    trade ? toInput(trade.exitPrice) : planned.exit
+  );
+  const [lots, setLots] = useState(trade ? toInput(trade.lots) : planned.lots);
   const [notes, setNotes] = useState(trade?.notes ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,6 +122,16 @@ function TradeForm({
 
   return (
     <form className="trade-form" onSubmit={submit}>
+      {prefilled && (
+        <p className="faint" style={{ fontSize: 12.5 }}>
+          Filled from the signal: entry at the middle of the zone
+          {planned.exit
+            ? `, exit at the engine's ${engineExit(prediction)?.label}`
+            : ''}
+          {planned.lots ? ', size from your calculator settings' : ''}. Change
+          anything that differs from your actual fills.
+        </p>
+      )}
       {error && <div className="alert alert-error">{error}</div>}
       <div className="field">
         <span>Side</span>
@@ -156,10 +210,12 @@ function TradeForm({
 
 /** "I took this trade": the user's own entry, exit, size and notes on a signal. */
 export function MyTrade({ prediction }: { prediction: Prediction }) {
-  const { data, error, tradeFor, remove } = useJournal();
+  const { data, error, tradeFor, remove, save } = useJournal();
   const [editing, setEditing] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [closing, setClosing] = useState(false);
   const trade = tradeFor(prediction.id);
+  const result = engineExit(prediction);
 
   if (error && !data)
     return (
@@ -174,6 +230,14 @@ export function MyTrade({ prediction }: { prediction: Prediction }) {
         trade={trade}
         onDone={() => setEditing(false)}
       />
+    );
+  }
+  if (!trade && prediction.continuesId) {
+    return (
+      <p className="faint" style={{ fontSize: 12.5 }}>
+        This window holds an earlier open trade. Log it on that original signal
+        so it is only counted once.
+      </p>
     );
   }
   if (!trade) {
@@ -228,6 +292,31 @@ export function MyTrade({ prediction }: { prediction: Prediction }) {
         </div>
       </div>
       {trade.notes && <p className="trade-notes">{trade.notes}</p>}
+      {trade.exitPrice === null && result && (
+        <div className="trade-empty">
+          <p>
+            The signal has closed at its {result.label} (
+            {price(pair, result.price)}). Close your trade there too?
+          </p>
+          <button
+            className="btn btn-secondary btn-sm"
+            disabled={closing}
+            onClick={async () => {
+              setClosing(true);
+              await save(prediction.id, {
+                side: trade.side,
+                entryPrice: trade.entryPrice,
+                exitPrice: result.price,
+                lots: trade.lots,
+                notes: trade.notes,
+              }).catch(() => undefined);
+              setClosing(false);
+            }}
+          >
+            {closing && <Spinner />} Close at {price(pair, result.price)}
+          </button>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 8 }}>
         <button
           className="btn btn-secondary btn-sm"

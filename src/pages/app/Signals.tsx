@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { FeedBanner } from '../../components/Market';
+import { OpenTrades } from '../../components/OpenTrades';
 import { SignalDetail } from '../../components/SignalDrawer';
 import { SignalChart } from '../../components/Charts';
 import { SignalTicket, TicketSkeleton } from '../../components/SignalTicket';
@@ -25,6 +26,7 @@ export default function Signals() {
 
       <div className="stack">
         <FeedBanner />
+        <OpenTrades />
         {loading && !data ? (
           <div className="grid-2">
             <TicketSkeleton />

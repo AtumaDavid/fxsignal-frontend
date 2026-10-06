@@ -8,13 +8,14 @@ import {
   SessionMap,
 } from '../../components/Market';
 import { SignalDrawer } from '../../components/SignalDrawer';
+import { OpenTrades } from '../../components/OpenTrades';
 import { SignalTicket, TicketSkeleton } from '../../components/SignalTicket';
 import { OutlookSummary } from './Outlook';
 import { Empty } from '../../components/ui/Empty';
 import { useDashboard } from '../../lib/dashboard';
 import {
   dayDate,
-  directionLabel,
+  callLabel,
   directionTone,
   duration,
   longDate,
@@ -187,6 +188,8 @@ export default function Overview() {
           </div>
         )}
 
+        <OpenTrades />
+
         <SessionMap marketOpen={open} />
 
         <div className="grid-split">
@@ -228,7 +231,7 @@ export default function Overview() {
                 {data.history.slice(0, 5).map((p) => (
                   <div className="row" key={p.id}>
                     <span className={`tag tag-${directionTone(p.direction)}`}>
-                      {directionLabel(p.direction)}
+                      {callLabel(p)}
                     </span>
                     <div style={{ minWidth: 0 }}>
                       <div className="row-title mono">{p.pairCode}</div>

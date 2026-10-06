@@ -234,10 +234,10 @@ function Method() {
     {
       n: '03',
       title: 'Score it honestly',
-      copy: 'When the window closes, the call is replayed candle by candle. No fill means no trade; if stop and target share a candle, the stop counts first. Neutral calls are never scored.',
+      copy: 'Each call is replayed candle by candle. No fill in its window means no trade; a filled trade is followed until its target or stop trades, even after newer signals appear. If stop and target share a candle, the stop counts first.',
       list: [
         'fills at zone midpoint',
-        'first touch decides',
+        'followed to target or stop',
         'signed pips, kept forever',
       ],
     },

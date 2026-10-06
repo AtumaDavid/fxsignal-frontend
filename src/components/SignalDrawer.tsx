@@ -7,7 +7,7 @@ import { PositionSizer } from './PositionSizer';
 import {
   PAIR_NAMES,
   dateTime,
-  directionLabel,
+  callLabel,
   directionTone,
   price,
   signedPips,
@@ -249,7 +249,7 @@ export function SignalDrawer({
             <h2 id="signal-drawer-title">
               {prediction.pairCode}
               <span className={`tag tag-${tone}`}>
-                {directionLabel(prediction.direction)}
+                {callLabel(prediction)}
               </span>
             </h2>
             <span className="faint" style={{ fontSize: 12 }}>

@@ -42,6 +42,14 @@ export function directionLabel(direction: Direction) {
       : 'Neutral';
 }
 
+/** Label for a published call: a hold manages an earlier open trade. */
+export function callLabel(p: {
+  direction: Direction;
+  continuesId?: string | null;
+}) {
+  return p.continuesId ? 'Hold' : directionLabel(p.direction);
+}
+
 export function directionTone(direction: Direction | 'BULLISH' | 'BEARISH') {
   return direction === 'LONG' || direction === 'BULLISH'
     ? 'up'

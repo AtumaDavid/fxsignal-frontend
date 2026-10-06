@@ -1,7 +1,7 @@
 import { Icon } from './Icon';
 import {
   PAIR_NAMES,
-  directionLabel,
+  callLabel,
   directionTone,
   duration,
   price,
@@ -288,11 +288,13 @@ export function SignalTicket({
 
       <div className="ticket-call">
         <div className={`ticket-direction ${tone}`}>
-          {directionLabel(p.direction)}
+          {callLabel(p)}
           <small>
-            {p.direction === 'NEUTRAL'
-              ? 'No directional edge — trade the edges or stand aside'
-              : `${p.session} window · until ${time(p.expiresAt, timeZone)} ${tzLabel(timeZone)}`}
+            {p.continuesId
+              ? 'Managing the open trade from an earlier window · no new entry'
+              : p.direction === 'NEUTRAL'
+                ? 'No trade this window — stand aside'
+                : `${p.session} window · until ${time(p.expiresAt, timeZone)} ${tzLabel(timeZone)}`}
           </small>
         </div>
         <div className="ticket-confidence">

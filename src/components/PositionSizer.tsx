@@ -25,7 +25,7 @@ const DEFAULTS: SizerPrefs = {
 };
 const LOT_UNITS = 100_000;
 
-function readPrefs(): SizerPrefs {
+export function readSizerPrefs(): SizerPrefs {
   try {
     const raw = localStorage.getItem(PREF_KEY);
     return raw
@@ -36,43 +36,26 @@ function readPrefs(): SizerPrefs {
   }
 }
 
-function money(value: number, currency: Currency) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: currency === 'JPY' ? 0 : 2,
-  }).format(value);
-}
-
 /**
- * Lot size from account balance, risk % and the signal's stop distance.
+ * Lot size for a signal from the saved balance / risk / currency.
  *
  * Pip value of one standard lot (100,000 units), in USD:
  *   EUR/USD → $10 (the quote currency is USD);
  *   USD/JPY → ¥1,000 per pip ÷ USD/JPY.
  * Converted to the account currency with the two pairs FXSignal already
- * prices (EUR via EUR/USD, JPY via USD/JPY). Everything runs in the browser.
+ * prices (EUR via EUR/USD, JPY via USD/JPY). Rounded down to 0.01 lots so the
+ * risk budget is never exceeded.
  */
-export function PositionSizer({ prediction }: { prediction: Prediction }) {
-  const { data } = useDashboard();
-  const [prefs, setPrefs] = useState<SizerPrefs>(readPrefs);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(PREF_KEY, JSON.stringify(prefs));
-    } catch {
-      // Inputs reset next visit.
-    }
-  }, [prefs]);
-
+export function sizeFor(
+  prediction: Prediction,
+  prefs: SizerPrefs,
+  lastPrice: (pair: Prediction['pairCode']) => number | null
+) {
   const mid = (prediction.entryLow + prediction.entryHigh) / 2;
   const quote = (pair: Prediction['pairCode']) =>
-    pair === prediction.pairCode
-      ? mid
-      : (data?.prices.find((p) => p.pairCode === pair)?.price ?? null);
+    pair === prediction.pairCode ? mid : lastPrice(pair);
   const eurusd = quote('EUR/USD');
   const usdjpy = quote('USD/JPY');
-
   const pipValueUsd =
     prediction.pairCode === 'EUR/USD' ? 10 : usdjpy ? 1000 / usdjpy : null;
   const toAccount =
@@ -96,13 +79,40 @@ export function PositionSizer({ prediction }: { prediction: Prediction }) {
     riskPct > 0 &&
     riskPct <= 100;
   const riskAmount = valid ? (balance * riskPct) / 100 : null;
-
-  // Brokers trade in 0.01-lot steps; round down so the risk is never exceeded.
   const rawLots =
     riskAmount !== null && pipValueLot && stopPips
       ? riskAmount / (stopPips * pipValueLot)
       : null;
   const lots = rawLots === null ? null : Math.floor(rawLots * 100) / 100;
+  return { valid, pipValueLot, riskAmount, lots, stopPips };
+}
+
+function money(value: number, currency: Currency) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: currency === 'JPY' ? 0 : 2,
+  }).format(value);
+}
+
+/** Lot-size calculator for a signal; runs entirely in the browser. */
+export function PositionSizer({ prediction }: { prediction: Prediction }) {
+  const { data } = useDashboard();
+  const [prefs, setPrefs] = useState<SizerPrefs>(readSizerPrefs);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PREF_KEY, JSON.stringify(prefs));
+    } catch {
+      // Inputs reset next visit.
+    }
+  }, [prefs]);
+
+  const { valid, pipValueLot, riskAmount, lots, stopPips } = sizeFor(
+    prediction,
+    prefs,
+    (pair) => data?.prices.find((p) => p.pairCode === pair)?.price ?? null
+  );
   const actualRisk =
     lots !== null && pipValueLot && stopPips
       ? lots * stopPips * pipValueLot
