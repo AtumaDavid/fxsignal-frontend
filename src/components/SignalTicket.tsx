@@ -253,6 +253,47 @@ export function LiveStatus({
   );
 }
 
+/**
+ * Shown when the H1 checkpoint has acted on a signal: cancelled before entry
+ * (no trade) or an early exit suggested on strong evidence.
+ */
+export function CheckpointStatus({ prediction }: { prediction: Prediction }) {
+  const { timeZone } = usePrefs();
+  const o = prediction.outcome;
+  if (!o || (o.status !== 'CANCELLED' && o.status !== 'CLOSED_EARLY'))
+    return null;
+  const cancelled = o.status === 'CANCELLED';
+  const pips = o.movementPips;
+  return (
+    <div className="live checkpoint" role="status">
+      <div className="live-top">
+        <span className="dot dot-flat" />
+        <strong className="flat">
+          {cancelled
+            ? 'Cancelled before entry'
+            : `Exit suggested${pips !== null ? ` ${pips > 0 ? '+' : pips < 0 ? '−' : ''}${Math.abs(pips).toFixed(1)}p` : ''}`}
+        </strong>
+        <span className="live-detail">
+          {o.evaluatedAt ? `H1 close ${time(o.evaluatedAt, timeZone)}` : ''}
+          {!cancelled && o.resolvedPrice !== null
+            ? ` · at ${price(prediction.pairCode, o.resolvedPrice)}`
+            : ''}
+        </span>
+      </div>
+      {o.note && (
+        <p className="checkpoint-note">
+          {o.note.replace(/^(Cancelled before entry|Exit suggested): /, '')}
+        </p>
+      )}
+      <p className="checkpoint-note faint">
+        {cancelled
+          ? 'Not a trade, not scored. The pair is re-read at a later H1 close once H1 agrees with the context again.'
+          : 'Counted in net pips, not in the target/stop hit rate. A new setup can follow at a later H1 close.'}
+      </p>
+    </div>
+  );
+}
+
 export function SignalTicket({
   prediction,
   last,
@@ -308,6 +349,7 @@ export function SignalTicket({
         </div>
       </div>
 
+      <CheckpointStatus prediction={p} />
       {p.live && <LiveStatus prediction={p} live={p.live} />}
 
       <PriceLadder prediction={p} last={p.live?.lastPrice ?? last} />
@@ -357,7 +399,9 @@ export function SignalTicket({
         <div className="grow ticket-expiry">
           <div className="ticket-expiry-top">
             <span>
-              {left > 0 ? `Expires in ${duration(left)}` : 'Expired — settling'}
+              {left > 0
+                ? `${p.outcome?.status === 'CANCELLED' || p.outcome?.status === 'CLOSED_EARLY' ? 'Window ends in' : 'Expires in'} ${duration(left)}`
+                : 'Expired — settling'}
             </span>
           </div>
           <div className="meter">

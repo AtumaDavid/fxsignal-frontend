@@ -29,6 +29,8 @@ export function engineExit(
   if (!o || o.resolvedPrice === null) return null;
   if (o.status === 'HIT') return { price: o.resolvedPrice, label: 'target' };
   if (o.status === 'MISSED') return { price: o.resolvedPrice, label: 'stop' };
+  if (o.status === 'CLOSED_EARLY')
+    return { price: o.resolvedPrice, label: 'suggested exit' };
   if (o.status === 'EXPIRED' && o.movementPips !== null)
     return { price: o.resolvedPrice, label: 'close' };
   return null;

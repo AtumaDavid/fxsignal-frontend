@@ -3001,3 +3001,13 @@ button:disabled {
 .open-trade .ladder {
   padding: 4px 0 12px;
 }
+
+.live.checkpoint {
+  border-color: var(--flat-line);
+  background: var(--flat-soft);
+}
+.checkpoint-note {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-2);
+}

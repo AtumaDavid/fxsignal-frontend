@@ -151,7 +151,7 @@ export default function TrackRecord() {
                 <div className="kpi-value">{t?.signals ?? '—'}</div>
                 <span className="kpi-note">
                   {t
-                    ? `${t.neutral} neutral · ${t.notTriggered} not triggered`
+                    ? `${t.closedEarly ?? 0} closed early · ${t.cancelled ?? 0} cancelled · ${t.neutral} neutral · ${t.notTriggered} not triggered`
                     : '—'}
                 </span>
               </div>

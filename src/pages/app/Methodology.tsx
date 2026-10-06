@@ -148,7 +148,39 @@ export default function Methodology() {
         </section>
 
         <section>
-          <h2>4. Scoring</h2>
+          <h2>4. The H1 checkpoint</h2>
+          <p>
+            H1 is the execution timeframe, so every closed H1 candle is a
+            checkpoint for each open signal and trade. No model calls are
+            involved; it uses the same indicators as the engine.
+          </p>
+          <ul>
+            <li>
+              <strong>Before entry — cancel.</strong> If the zone has not filled
+              and H1 turns against the context, the daily/H4 context flips, or
+              price closes beyond the invalidation level, the signal is{' '}
+              <strong>cancelled</strong>. It was never a trade and is not
+              scored. The pair is then re-read at a later H1 close, and a new
+              entry needs H1 to clearly agree with the context again.
+            </li>
+            <li>
+              <strong>After entry — exit early, only on two signs.</strong> The
+              trade is closed early only when, on the same H1 close, price is
+              back through the far side of the entry zone <em>and</em> H1 or H4
+              now points against the trade. Either sign alone is ignored; that
+              is what the stop is for.
+            </li>
+            <li>
+              Early exits are recorded at the H1 close price as{' '}
+              <strong>Closed early</strong>: counted in net pips and the pips
+              curve, but kept out of the target/stop hit rate, so you can judge
+              whether early exits help.
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>5. Scoring</h2>
           <p>
             After a window closes, its signal is replayed against M15 candles
             (H1 if M15 is unavailable):
@@ -187,13 +219,14 @@ export default function Methodology() {
             </li>
           </ol>
           <p>
-            The hit rate counts only targets and invalidations. Pips are signed
-            in the trade's direction.
+            The hit rate counts only targets and invalidations; early exits are
+            in net pips but not the hit rate; cancelled signals and neutral
+            calls are not scored. Pips are signed in the trade's direction.
           </p>
         </section>
 
         <section>
-          <h2>5. Sessions and killzones</h2>
+          <h2>6. Sessions and killzones</h2>
           <p>
             All windows are fixed in UTC, the clock the FX market is scheduled
             on. The last column shows the same window in your time zone (

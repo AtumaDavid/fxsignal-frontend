@@ -26,6 +26,11 @@ export default function MyJournal() {
   const { timeZone } = usePrefs();
   const [openId, setOpenId] = useState<string | null>(null);
   const summary = data?.summary;
+  // How the engine's own trades ended on the signals you took.
+  const engineCount = (status: string) =>
+    (data?.trades ?? []).filter(
+      (t) => (t.prediction.outcome?.status ?? 'PENDING') === status
+    ).length;
   const selected = data?.trades.find((t) => t.predictionId === openId) ?? null;
   const winRate =
     summary && summary.closed > 0
@@ -96,11 +101,7 @@ export default function MyJournal() {
             </div>
             <span className="kpi-note">
               {data
-                ? `${data.trades.filter((t) => t.prediction.outcome?.status === 'HIT').length} targets · ${
-                    data.trades.filter(
-                      (t) => t.prediction.outcome?.status === 'MISSED'
-                    ).length
-                  } stops · ${data.trades.filter((t) => (t.prediction.outcome?.status ?? 'PENDING') === 'PENDING').length} open`
+                ? `${engineCount('HIT')} targets · ${engineCount('MISSED')} stops · ${engineCount('CLOSED_EARLY')} closed early · ${engineCount('PENDING')} open`
                 : '—'}
             </span>
           </div>

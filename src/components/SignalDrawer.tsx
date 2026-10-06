@@ -1,6 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { Icon } from './Icon';
-import { LiveStatus, PriceLadder, engineLabel } from './SignalTicket';
+import {
+  CheckpointStatus,
+  LiveStatus,
+  PriceLadder,
+  engineLabel,
+} from './SignalTicket';
 import { SignalChart } from './Charts';
 import { MyTrade } from './MyTrade';
 import { PositionSizer } from './PositionSizer';
@@ -19,6 +24,8 @@ import type { Prediction } from '../lib/types';
 const OUTCOME_LABEL = {
   HIT: 'Target hit',
   MISSED: 'Invalidated',
+  CLOSED_EARLY: 'Closed early',
+  CANCELLED: 'Cancelled before entry',
   EXPIRED: 'Expired',
   PENDING: 'Open',
 } as const;
@@ -38,6 +45,9 @@ export function SignalDetail({
     <>
       <div className="detail-section">
         <span className="label">Levels</span>
+        <div className="live-flush">
+          <CheckpointStatus prediction={p} />
+        </div>
         {p.live && p.live.state !== 'neutral' && (
           <div className="live-flush">
             <LiveStatus prediction={p} live={p.live} />
@@ -248,9 +258,7 @@ export function SignalDrawer({
           <div>
             <h2 id="signal-drawer-title">
               {prediction.pairCode}
-              <span className={`tag tag-${tone}`}>
-                {callLabel(prediction)}
-              </span>
+              <span className={`tag tag-${tone}`}>{callLabel(prediction)}</span>
             </h2>
             <span className="faint" style={{ fontSize: 12 }}>
               {PAIR_NAMES[prediction.pairCode]} · {prediction.session} window

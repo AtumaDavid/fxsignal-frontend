@@ -4,6 +4,8 @@ import type { Prediction, WeeklyOutlook } from '../lib/types';
 const RESULT_LABEL = {
   HIT: 'Target hit',
   MISSED: 'Stopped',
+  CLOSED_EARLY: 'Closed early',
+  CANCELLED: 'Cancelled',
   EXPIRED: 'Expired',
   PENDING: 'Expired',
 } as const;
@@ -48,8 +50,18 @@ export function SignalChart({
   const events: ChartEvent[] = [
     { at: p.validFrom, label: 'Published', tone: 'ink' },
   ];
-  if (expired) {
-    const status = p.outcome?.status ?? 'PENDING';
+  const status = p.outcome?.status ?? 'PENDING';
+  const checkpoint = status === 'CANCELLED' || status === 'CLOSED_EARLY';
+  if (checkpoint && p.outcome?.evaluatedAt) {
+    // Decided on an H1 close: mark the candle that closed just before.
+    events.push({
+      at: new Date(
+        new Date(p.outcome.evaluatedAt).getTime() - 5 * 60_000
+      ).toISOString(),
+      label: RESULT_LABEL[status],
+      tone: 'muted',
+    });
+  } else if (expired) {
     events.push({
       at: new Date(new Date(p.expiresAt).getTime() - 1000).toISOString(),
       label: RESULT_LABEL[status],

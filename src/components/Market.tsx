@@ -246,6 +246,8 @@ export function EventRow({
 const OUTCOME = {
   HIT: { label: 'Target', cls: 'tag-up' },
   MISSED: { label: 'Stopped', cls: 'tag-down' },
+  CLOSED_EARLY: { label: 'Closed early', cls: 'tag-flat' },
+  CANCELLED: { label: 'Cancelled', cls: '' },
   EXPIRED: { label: 'Expired', cls: '' },
   PENDING: { label: 'Open', cls: 'tag-solid' },
 } as const;

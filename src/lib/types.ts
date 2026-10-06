@@ -1,7 +1,15 @@
 export type PairCode = 'EUR/USD' | 'USD/JPY';
 export type Direction = 'LONG' | 'SHORT' | 'NEUTRAL';
 export type Impact = 'LOW' | 'MEDIUM' | 'HIGH';
-export type OutcomeStatus = 'PENDING' | 'HIT' | 'MISSED' | 'EXPIRED';
+export type OutcomeStatus =
+  | 'PENDING'
+  | 'HIT'
+  | 'MISSED'
+  | 'EXPIRED'
+  /** Withdrawn before entry on an H1 close (never a trade). */
+  | 'CANCELLED'
+  /** Exited early on strong H1 evidence (in net pips, not the hit rate). */
+  | 'CLOSED_EARLY';
 export type OutcomeSource = 'DEMO' | 'LIVE';
 export type PredictionEngine = 'RULE_BASED' | 'DEEPSEEK';
 
@@ -195,6 +203,8 @@ export interface PerformanceSummary {
     notTriggered: number;
     pending: number;
     neutral: number;
+    closedEarly: number;
+    cancelled: number;
   };
   byPair: PerformanceBucket[];
   bySession: PerformanceBucket[];
