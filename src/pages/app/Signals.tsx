@@ -18,7 +18,7 @@ export default function Signals() {
         <div>
           <h1>Signals</h1>
           <p>
-            One read per pair for the current six-hour window: the bias, the
+            One read per pair for the current session window: the bias, the
             levels, and the reasoning behind them.
           </p>
         </div>

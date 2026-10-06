@@ -16,18 +16,20 @@ import { usePrefs } from '../lib/prefs';
 import type { Impact, MarketEvent, OutcomeStatus } from '../lib/types';
 
 // Mirrors backend getSession() (labels on signals) and sessionInfo() (killzones).
+// The signal windows (mirrors backend market.WINDOW_SCHEDULE).
 const SESSIONS = [
-  { name: 'Tokyo', start: 0, end: 8 },
-  { name: 'London', start: 8, end: 13 },
-  { name: 'LDN / NY', start: 13, end: 17 },
-  { name: 'New York', start: 17, end: 22 },
-  { name: 'Pre-open', start: 22, end: 24 },
+  { name: 'Asia', start: 0, end: 7 },
+  { name: 'London', start: 7, end: 12 },
+  { name: 'New York', start: 12, end: 17 },
+  { name: 'No new signals', start: 17, end: 24 },
 ];
 const KILLZONES = [
   { name: 'London KZ', start: 7, end: 10 },
   { name: 'New York KZ', start: 12, end: 15 },
 ];
-const SIGNAL_WINDOWS = [0, 6, 12, 18];
+// Signal windows open at the session starts (Asia, London, New York); nothing
+// new is published 17:00–24:00 UTC. Mirrors backend market.WINDOW_SCHEDULE.
+const SIGNAL_WINDOWS = [0, 7, 12];
 const SCALE = [0, 3, 6, 9, 12, 15, 18, 21, 24];
 
 export function SessionMap({ marketOpen }: { marketOpen: boolean }) {
@@ -50,9 +52,17 @@ export function SessionMap({ marketOpen }: { marketOpen: boolean }) {
     ...k,
     inHours: (k.start - hour + 24) % 24 || 24,
   })).sort((a, b) => a.inHours - b.inHours)[0];
-  const nextWindow = SIGNAL_WINDOWS.map((w) => (w - hour + 24) % 24 || 24).sort(
-    (a, b) => a - b
-  )[0];
+  // Prefer the server's schedule (it knows about Friday evenings and weekends).
+  const { data } = useDashboard();
+  const serverNext = data?.stats.nextRefresh
+    ? new Date(data.stats.nextRefresh).getTime() - now
+    : NaN;
+  const nextWindowMs =
+    Number.isFinite(serverNext) && serverNext > 0
+      ? serverNext
+      : SIGNAL_WINDOWS.map((w) => (w - hour + 24) % 24 || 24).sort(
+          (a, b) => a - b
+        )[0] * 3_600_000;
 
   return (
     <section className="panel">
@@ -61,12 +71,12 @@ export function SessionMap({ marketOpen }: { marketOpen: boolean }) {
           <h2>Session map</h2>
           <p>
             Today in UTC
-            {showLocal ? ` with ${tzLabel('local')} below` : ''} · new signals
-            at{' '}
-            {[0, 6, 12, 18]
-              .map((h) => utcHourAs(h, showLocal ? 'local' : 'utc'))
-              .join(', ')}
-            {showLocal ? ` ${tzLabel('local')}` : ' UTC'}
+            {showLocal ? ` with ${tzLabel('local')} below` : ''} · signals at
+            Asia {utcHourAs(0, showLocal ? 'local' : 'utc')}, London{' '}
+            {utcHourAs(7, showLocal ? 'local' : 'utc')}, New York{' '}
+            {utcHourAs(12, showLocal ? 'local' : 'utc')}
+            {showLocal ? ` ${tzLabel('local')}` : ' UTC'} · none after{' '}
+            {utcHourAs(17, showLocal ? 'local' : 'utc')}
           </p>
         </div>
         <span className="tag">
@@ -91,7 +101,7 @@ export function SessionMap({ marketOpen }: { marketOpen: boolean }) {
                 <span
                   key={s.name}
                   title={bandTitle(s)}
-                  className={`session-band${live(s) ? ' live' : ''}`}
+                  className={`session-band${live(s) ? ' is-live' : ''}`}
                   style={{
                     left: pct(s.start),
                     width: `calc(${pct(s.end - s.start)} - 2px)`,
@@ -106,7 +116,7 @@ export function SessionMap({ marketOpen }: { marketOpen: boolean }) {
                 <span
                   key={k.name}
                   title={bandTitle(k)}
-                  className={`session-band kz${live(k) ? ' live' : ''}`}
+                  className={`session-band kz${live(k) ? ' is-live' : ''}`}
                   style={{
                     left: pct(k.start),
                     width: `calc(${pct(k.end - k.start)} - 2px)`,
@@ -160,7 +170,7 @@ export function SessionMap({ marketOpen }: { marketOpen: boolean }) {
                 </span>
               )}
               <span>
-                Next signal window in <b>{duration(nextWindow * 3_600_000)}</b>
+                Next signal window in <b>{duration(nextWindowMs)}</b>
               </span>
             </>
           ) : (

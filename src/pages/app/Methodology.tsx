@@ -129,10 +129,21 @@ export default function Methodology() {
         <section>
           <h2>3. Cadence</h2>
           <p>
-            Windows open at 00:00, 06:00, 12:00 and 18:00 UTC while spot FX
-            trades (Sunday 22:00 to Friday 22:00 UTC). A signal covers the rest
-            of its window and never outlives the Friday close. Over the weekend
-            the engine publishes a week-ahead outlook instead of intraday calls.
+            Signals follow the trading sessions, not a fixed clock. Each pair
+            gets one call per window: <strong>Asia</strong> 00:00–07:00 UTC (a
+            lighter read: only fully aligned setups at 70%+ confidence),{' '}
+            <strong>London</strong> 07:00–12:00 and <strong>New York</strong>{' '}
+            12:00–17:00. Nothing new is published from 17:00 to midnight, when
+            liquidity thins out, or over the weekend, when the engine publishes
+            a week-ahead outlook instead.
+          </p>
+          <p>
+            <strong>Early re-checks.</strong> When a trade reaches its target or
+            stop during London or New York, the pair is read again at the next
+            H1 close instead of waiting for the next window. After a stop, H1
+            must clearly agree with the daily/H4 context again (no revenge
+            entries). At most two trades per pair per window, one re-check per
+            H1 candle, and none in the last 45 minutes of a window.
           </p>
         </section>
 
@@ -218,9 +229,10 @@ export default function Methodology() {
             Killzones are the first hours of the London and New York cash
             sessions, when most of the day's range is usually set. Signal
             windows are separate: they open at{' '}
-            {[0, 6, 12, 18].map((h) => utcHourAs(h, 'utc')).join(', ')} UTC
+            {[0, 7, 12].map((h) => utcHourAs(h, 'utc')).join(', ')} UTC (Asia,
+            London, New York)
             {localDiffersFromUtc()
-              ? ` (${[0, 6, 12, 18].map((h) => utcHourAs(h, 'local')).join(', ')} your time)`
+              ? ` (${[0, 7, 12].map((h) => utcHourAs(h, 'local')).join(', ')} your time)`
               : ''}
             .
           </p>

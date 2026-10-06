@@ -1531,7 +1531,7 @@ button:disabled {
   overflow: hidden;
   white-space: nowrap;
 }
-.session-band.live {
+.session-band.is-live {
   background: rgba(237, 237, 239, 0.1);
   border-color: rgba(237, 237, 239, 0.35);
   color: var(--text);
@@ -1540,7 +1540,7 @@ button:disabled {
   background: transparent;
   border: 1px dashed var(--line-heavy);
 }
-.session-band.kz.live {
+.session-band.kz.is-live {
   border-color: var(--up-line);
   border-style: solid;
   background: var(--up-soft);

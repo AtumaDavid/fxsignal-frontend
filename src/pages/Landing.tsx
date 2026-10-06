@@ -139,7 +139,8 @@ function Hero() {
     <section className="lp-hero">
       <div className="lp-container">
         <div className="lp-kicker">
-          <span className="dot dot-live" /> EUR/USD · USD/JPY · every six hours
+          <span className="dot dot-live" /> EUR/USD · USD/JPY · London, New York
+          & Asia sessions
         </div>
         <h1>
           Intraday FX reads,{' '}
@@ -192,7 +193,7 @@ function Facts() {
   const facts = [
     ['2 pairs', 'EUR/USD and USD/JPY, nothing else'],
     ['D · H4 → H1 → M15', 'Context, execution, confirmation'],
-    ['4 windows a day', '00, 06, 12, 18 UTC while FX trades'],
+    ['3 session windows', 'Asia 00 · London 07 · New York 12 UTC'],
     ['Every call scored', 'Replayed against M15 candles'],
   ];
   return (

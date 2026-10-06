@@ -25,14 +25,16 @@ const RANGES = [
   { days: 365, label: '1y' },
 ];
 
-// Hours mirror the backend's session labels (model.getSession), in UTC.
+// Hours mirror the backend's signal windows (market.WINDOW_SCHEDULE), in UTC.
 const SESSION_OPTIONS: SelectOption<string>[] = [
   { value: '', label: 'All sessions' },
-  { value: 'Tokyo', label: 'Tokyo', hint: '00–08 UTC' },
-  { value: 'London', label: 'London', hint: '08–13 UTC' },
-  { value: 'London / New York', label: 'London / New York', hint: '13–17 UTC' },
-  { value: 'New York', label: 'New York', hint: '17–22 UTC' },
-  { value: 'Asia pre-open', label: 'Asia pre-open', hint: '22–24 UTC' },
+  { value: 'Asia', label: 'Asia', hint: '00–07 UTC' },
+  { value: 'London', label: 'London', hint: '07–12 UTC' },
+  { value: 'New York', label: 'New York', hint: '12–17 UTC' },
+  // Labels used before session-aligned windows; kept so old signals filter.
+  { value: 'Tokyo', label: 'Tokyo', hint: 'older' },
+  { value: 'London / New York', label: 'London / New York', hint: 'older' },
+  { value: 'Asia pre-open', label: 'Asia pre-open', hint: 'older' },
 ];
 
 const PAIR_OPTIONS: SelectOption<'' | PairCode>[] = [

@@ -130,7 +130,7 @@ export default function Overview() {
             <span className="kpi-note">
               {next
                 ? `${dayDate(next, timeZone)}, ${time(next, timeZone)} ${tzLabel(timeZone)}`
-                : 'Every 6 hours'}
+                : 'Asia, London and New York windows'}
             </span>
           </div>
         </section>
