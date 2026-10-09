@@ -100,6 +100,7 @@ const TITLES: Record<string, string> = {
   '/app/performance': 'Performance',
   '/app/journal': 'My journal',
   '/app/recap': 'Weekly recap',
+  '/app/admin': 'Admin',
   '/app/billing': 'Plan & billing',
   '/app/settings': 'Settings',
   '/app/methodology': 'Methodology',
@@ -170,6 +171,13 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
         <nav className="nav-group" aria-label="Account">
           <div className="nav-heading">Account</div>
           {ACCOUNT_NAV.map(renderItem)}
+          {user?.isAdmin &&
+            renderItem({
+              to: '/app/admin',
+              label: 'Admin',
+              icon: 'shield',
+              tip: 'Users, data credits, alert delivery and server health.',
+            })}
         </nav>
 
         <div className="sidebar-foot">

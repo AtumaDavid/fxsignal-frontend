@@ -16,6 +16,8 @@ import type {
   User,
   WeeklyOutlook,
   WeeklyRecap,
+  AdminOverview,
+  AdminUser,
 } from './types';
 import type { RiskPrefs } from './guardrails';
 
@@ -284,6 +286,23 @@ export const riskApi = {
   get: () => request<{ prefs: RiskPrefs }>('/risk'),
   save: (prefs: RiskPrefs) =>
     request<{ prefs: RiskPrefs }>('/risk', { method: 'PUT', body: prefs }),
+};
+
+// ---- Admin --------------------------------------------------------------------
+
+export const adminApi = {
+  overview: (signal?: AbortSignal) =>
+    request<AdminOverview>('/admin/overview', { signal }),
+  users: (q = '', signal?: AbortSignal) =>
+    request<{ users: AdminUser[] }>(
+      `/admin/users${q ? `?q=${encodeURIComponent(q)}` : ''}`,
+      { signal }
+    ),
+  setPlan: (id: number, plan: 'FREE' | 'PRO') =>
+    request<{ user: { id: number; plan: string } }>(`/admin/users/${id}`, {
+      method: 'PATCH',
+      body: { plan },
+    }),
 };
 
 // ---- Weekly recap -------------------------------------------------------------

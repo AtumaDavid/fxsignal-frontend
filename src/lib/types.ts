@@ -22,6 +22,8 @@ export interface User {
   plan: string;
   planStatus?: string;
   createdAt: string;
+  /** Listed in the server's ADMIN_EMAILS. */
+  isAdmin?: boolean;
 }
 
 export interface AuthResponse {
@@ -383,4 +385,89 @@ export interface WeeklyRecap {
     netPips: number;
   };
   trades: Prediction[];
+}
+
+export interface AdminOverview {
+  server: {
+    startedAt: string;
+    uptimeSec: number;
+    node: string;
+    memoryMb: number;
+    dbOk: boolean;
+    dbLatencyMs: number;
+  };
+  jobs: {
+    startedAt: string;
+    maintenance: {
+      at: string;
+      ms: number;
+      ok: boolean;
+      error: string | null;
+    } | null;
+    candleLoopAt: string | null;
+  };
+  config: {
+    liveData: boolean;
+    modelReview: boolean;
+    email: boolean;
+    push: boolean;
+    calendar: boolean;
+    admins: number;
+  };
+  credits: {
+    day: string;
+    usedToday: number;
+    dailyLimit: number;
+    lastMinute: number;
+    perMinuteLimit: number;
+  };
+  series: {
+    key: string;
+    newest: string | null;
+    ageMinutes: number | null;
+    stale: boolean;
+    backingOff: boolean;
+  }[];
+  counts: {
+    users: number;
+    pro: number;
+    newThisWeek: number;
+    activeToday: number;
+    pushDevices: number;
+    journalTrades: number;
+  };
+  signals: {
+    open: number;
+    publishedToday: number;
+    lastByPair: {
+      pairCode: PairCode;
+      at: string;
+      direction: Direction;
+      status: OutcomeStatus;
+    }[];
+  };
+  alerts: {
+    sentToday: number;
+    failedToday: number;
+    failures: {
+      id: number;
+      userId: number | null;
+      channel: string;
+      kind: string;
+      error: string;
+      createdAt: string;
+    }[];
+  };
+}
+
+export interface AdminUser {
+  id: number;
+  email: string;
+  name: string;
+  plan: string;
+  planStatus: string;
+  createdAt: string;
+  lastSeenAt: string | null;
+  trades: number;
+  pushDevices: number;
 }
