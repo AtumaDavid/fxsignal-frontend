@@ -21,9 +21,20 @@ function keyBytes(base64Url: string) {
 /**
  * Registers the service worker at startup, so an installed app (and the
  * iPhone Home Screen app) always has it for push.
+ *
+ * After a deploy, the new service worker takes over (skipWaiting +
+ * clients.claim) and the page reloads once, so installed apps never stay on
+ * an old version. The very first install is not a reason to reload.
  */
 export function registerServiceWorker() {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+  const hadController = Boolean(navigator.serviceWorker.controller);
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloaded) return;
+    reloaded = true;
+    window.location.reload();
+  });
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => undefined);
   });
