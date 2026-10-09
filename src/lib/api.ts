@@ -15,6 +15,7 @@ import type {
   PerformanceSummary,
   User,
   WeeklyOutlook,
+  WeeklyRecap,
 } from './types';
 
 // VITE_API_URL wins when set. Otherwise production builds talk to the hosted
@@ -275,6 +276,14 @@ export const notificationsApi = {
   test: () =>
     request<void>('/notifications/test', { method: 'POST', body: {} }),
 };
+
+// ---- Weekly recap -------------------------------------------------------------
+
+export function getRecap(week?: string, signal?: AbortSignal) {
+  return request<WeeklyRecap>(`/recap${week ? `?week=${week}` : ''}`, {
+    signal,
+  });
+}
 
 // ---- Public -----------------------------------------------------------------
 

@@ -19,6 +19,7 @@ import Billing from './pages/app/Billing';
 import Settings from './pages/app/Settings';
 import Methodology from './pages/app/Methodology';
 import MyJournal from './pages/app/MyJournal';
+import Recap from './pages/app/Recap';
 import './index.css';
 import { registerServiceWorker } from './lib/push';
 
@@ -49,6 +50,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="calendar" element={<Calendar />} />
               <Route path="performance" element={<Performance />} />
               <Route path="journal" element={<MyJournal />} />
+              <Route path="recap" element={<Recap />} />
               <Route path="billing" element={<Billing />} />
               <Route path="settings" element={<Settings />} />
               <Route path="methodology" element={<Methodology />} />

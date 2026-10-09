@@ -344,3 +344,43 @@ export interface AlertSettings {
   vapidPublicKey: string | null;
   pushDevices: number;
 }
+
+export interface RecapGroup {
+  key: string;
+  trades: number;
+  wins: number;
+  losses: number;
+  netPips: number;
+  netR: number;
+}
+
+export interface WeeklyRecap {
+  weekStart: string;
+  weekEnd: string;
+  weeks: string[];
+  engine: {
+    signals: number;
+    closed: number;
+    open: number;
+    notTriggered: number;
+    cancelled: number;
+    wins: number;
+    losses: number;
+    winRate: number | null;
+    netPips: number;
+    netR: number;
+    best: { id: string; pairCode: PairCode; pips: number } | null;
+    worst: { id: string; pairCode: PairCode; pips: number } | null;
+  };
+  days: { date: string; trades: number; netPips: number }[];
+  byPair: RecapGroup[];
+  bySession: RecapGroup[];
+  you: {
+    logged: number;
+    closed: number;
+    wins: number;
+    losses: number;
+    netPips: number;
+  };
+  trades: Prediction[];
+}

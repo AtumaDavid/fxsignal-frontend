@@ -3852,3 +3852,90 @@ a[data-tip],
     padding-left: 48px;
   }
 }
+
+/* ---- Weekly recap ------------------------------------------------------------ */
+.recap-days {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  padding: 16px 18px 18px;
+}
+.recap-day {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  text-align: center;
+}
+.recap-day-bar {
+  position: relative;
+  width: 100%;
+  max-width: 64px;
+  height: 96px;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+.recap-day-mid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--line-strong);
+}
+.recap-day-fill {
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  border-radius: 3px;
+}
+.recap-day-fill.up {
+  background: var(--up);
+}
+.recap-day-fill.down {
+  background: var(--down);
+}
+.recap-day strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.recap-day span {
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.recap-extremes {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.recap-next {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.recap-next div {
+  display: grid;
+  gap: 2px;
+}
+.recap-next strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+.recap-next span {
+  font-size: 13px;
+  color: var(--text-2);
+}
+@media (max-width: 640px) {
+  .recap-next {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .recap-days {
+    gap: 4px;
+    padding: 14px 12px;
+  }
+}

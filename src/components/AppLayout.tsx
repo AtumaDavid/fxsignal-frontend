@@ -58,6 +58,12 @@ const MARKET_NAV: NavItem[] = [
     tip: "How the engine's signals have done: hit rate, pips and every past signal.",
   },
   {
+    to: '/app/recap',
+    label: 'Weekly recap',
+    icon: 'chart',
+    tip: 'The week in one page: results, best and worst trades, and how you did.',
+  },
+  {
     to: '/app/journal',
     label: 'My journal',
     icon: 'book',
@@ -93,6 +99,7 @@ const TITLES: Record<string, string> = {
   '/app/calendar': 'Calendar',
   '/app/performance': 'Performance',
   '/app/journal': 'My journal',
+  '/app/recap': 'Weekly recap',
   '/app/billing': 'Plan & billing',
   '/app/settings': 'Settings',
   '/app/methodology': 'Methodology',
