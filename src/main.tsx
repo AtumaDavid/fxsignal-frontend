@@ -20,6 +20,9 @@ import Settings from './pages/app/Settings';
 import Methodology from './pages/app/Methodology';
 import MyJournal from './pages/app/MyJournal';
 import './index.css';
+import { registerServiceWorker } from './lib/push';
+
+registerServiceWorker();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

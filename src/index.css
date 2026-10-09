@@ -3571,6 +3571,7 @@ a[data-tip],
 .pair-tab {
   display: grid;
   gap: 6px;
+  min-width: 0;
   text-align: left;
   padding: 12px 14px;
   border-radius: 10px;
@@ -3604,12 +3605,20 @@ a[data-tip],
   font-size: 14px;
   font-weight: 600;
 }
+.pair-tab-bottom {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
 .pair-tab-price {
   margin-left: auto;
+  flex-shrink: 0;
   font-size: 12px;
-  color: var(--text-2);
+  color: var(--text-3);
 }
 .pair-tab-status {
+  min-width: 0;
   font-size: 12px;
   color: var(--text-2);
   white-space: nowrap;
@@ -3646,4 +3655,60 @@ a[data-tip],
     grid-column: 1;
     grid-row: auto;
   }
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    gap: 10px;
+  }
+  .clock {
+    padding-left: 10px;
+    min-width: 0;
+  }
+  .pair-tab {
+    padding: 10px 12px;
+  }
+}
+/* Narrow phones: the session label is enough; the clock is on Overview. */
+@media (max-width: 420px) {
+  .clock-time {
+    display: none;
+  }
+}
+@media (max-width: 480px) {
+  .pair-tab-price {
+    display: none;
+  }
+}
+@media (max-width: 380px) {
+  .ladder-4 .ladder-labels strong {
+    font-size: 12px;
+  }
+}
+
+/* ---- Alerts: how to enable push on this device ------------------------------ */
+.push-help {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
+  font-size: 12.5px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+.push-help strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+}
+.push-help ol {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 2px;
+}
+.push-help b {
+  color: var(--text);
+  font-weight: 500;
 }

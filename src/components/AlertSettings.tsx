@@ -3,10 +3,15 @@ import { Icon } from './Icon';
 import { Spinner } from './ui/Empty';
 import { notificationsApi } from '../lib/api';
 import {
+  canInstall,
   currentSubscription,
   disablePush,
   enablePush,
-  pushSupported,
+  installApp,
+  isIOS,
+  onInstallChange,
+  pushBlocker,
+  type PushBlocker,
 } from '../lib/push';
 import type {
   AlertGroup,
@@ -22,13 +27,13 @@ const EVENTS: { key: AlertGroup; label: string; hint: string }[] = [
   },
   {
     key: 'entry',
-    label: 'Entry triggered',
-    hint: 'Price trades into a signal’s entry zone.',
+    label: 'Entry and trade management',
+    hint: 'Entry triggered, move the stop to entry (+1R), TP1 hit.',
   },
   {
     key: 'result',
-    label: 'Target or stop hit',
-    hint: 'As soon as it shows on a closed 15-minute candle.',
+    label: 'Trade closed',
+    hint: 'TP2, stop or breakeven, as soon as it shows on a closed 15-minute candle.',
   },
   {
     key: 'checkpoint',
@@ -68,6 +73,60 @@ function Switch({
   );
 }
 
+/** What to do when push can't be switched on in this browser. */
+function PushHelp({ blocker }: { blocker: PushBlocker }) {
+  if (blocker === 'ios-install')
+    return (
+      <div className="push-help">
+        <strong>On iPhone, push works from the Home Screen app</strong>
+        <ol>
+          <li>
+            In Safari, tap <b>Share</b> (the square with the arrow).
+          </li>
+          <li>
+            Choose <b>Add to Home Screen</b>, then <b>Add</b>.
+          </li>
+          <li>
+            Open <b>FXSignal</b> from the Home Screen, sign in, and turn on push
+            here.
+          </li>
+        </ol>
+        <span className="faint">Needs iOS 16.4 or later.</span>
+      </div>
+    );
+  if (blocker === 'in-app')
+    return (
+      <div className="push-help">
+        <strong>Open FXSignal in your browser</strong>
+        <span>
+          Browsers inside other apps can't show notifications. Use the menu (⋯)
+          and choose <b>Open in browser</b>
+          {isIOS() ? ', then add it to the Home Screen' : ''}.
+        </span>
+      </div>
+    );
+  if (blocker === 'denied')
+    return (
+      <div className="push-help">
+        <strong>Notifications are blocked for this site</strong>
+        <span>
+          {isIOS()
+            ? 'Open iPhone Settings → Notifications → FXSignal and allow notifications, then come back.'
+            : 'Tap the icon left of the address (or the browser menu → Site settings) → Notifications → Allow, then reload this page.'}
+        </span>
+      </div>
+    );
+  return (
+    <div className="push-help">
+      <strong>This browser can't receive push</strong>
+      <span>
+        Use Chrome, Edge, Firefox or Samsung Internet on Android, or Safari on
+        iPhone (from the Home Screen).
+      </span>
+    </div>
+  );
+}
+
 export function AlertSettings() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +136,10 @@ export function AlertSettings() {
   } | null>(null);
   const [pushOn, setPushOn] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [blocker, setBlocker] = useState(pushBlocker);
+  const [installable, setInstallable] = useState(canInstall);
+
+  useEffect(() => onInstallChange(() => setInstallable(canInstall())), []);
 
   useEffect(() => {
     notificationsApi
@@ -117,6 +180,7 @@ export function AlertSettings() {
           : 'Push turned off for this browser.',
       });
     } catch (err) {
+      setBlocker(pushBlocker());
       setNotice({
         tone: 'error',
         text: err instanceof Error ? err.message : 'Could not change push.',
@@ -187,9 +251,7 @@ export function AlertSettings() {
             <span>
               {!settings.pushAvailable
                 ? 'Not set up on the server yet (VAPID keys in the API .env).'
-                : !pushSupported()
-                  ? 'This browser does not support push. On iPhone, add FXSignal to the Home Screen first.'
-                  : 'Shows alerts even when FXSignal is closed. Turn it on per device.'}
+                : 'Shows alerts even when FXSignal is closed. Turn it on once on each phone or computer.'}
             </span>
           </div>
           {busy === 'push' ? (
@@ -198,7 +260,7 @@ export function AlertSettings() {
             <Switch
               label="Push notifications"
               checked={pushOn && prefs.channels.push}
-              disabled={!settings.pushAvailable || !pushSupported()}
+              disabled={!settings.pushAvailable || blocker !== null}
               onChange={(next) => {
                 void togglePush(next);
                 if (next && !prefs.channels.push)
@@ -210,6 +272,24 @@ export function AlertSettings() {
             />
           )}
         </div>
+        {settings.pushAvailable && blocker && <PushHelp blocker={blocker} />}
+        {installable && (
+          <div className="pref-row">
+            <div>
+              <strong>Install the app</strong>
+              <span>
+                Adds FXSignal to your home screen and opens it like an app.
+              </span>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => void installApp()}
+            >
+              Install
+            </button>
+          </div>
+        )}
       </div>
 
       <span className="label" style={{ marginTop: 6 }}>

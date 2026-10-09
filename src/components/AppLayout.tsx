@@ -208,7 +208,7 @@ function Clock() {
   const now = useNow(15_000);
   return (
     <div
-      className="clock"
+      className="clock clock-time"
       data-tip="Forex sessions and signal windows are scheduled in UTC. Your local time is shown next to it."
     >
       <span className="num">{time(new Date(now), 'utc')}</span>

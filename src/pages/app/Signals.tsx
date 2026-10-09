@@ -121,14 +121,16 @@ export default function Signals() {
                       <span className={`tag tag-${directionTone(p.direction)}`}>
                         {callLabel(p)}
                       </span>
+                    </span>
+                    <span className="pair-tab-bottom">
+                      <span className={`pair-tab-status ${status.tone}`}>
+                        {status.text}
+                      </span>
                       {last !== null && (
                         <span className="pair-tab-price num">
                           {price(p.pairCode, last)}
                         </span>
                       )}
-                    </span>
-                    <span className={`pair-tab-status ${status.tone}`}>
-                      {status.text}
                     </span>
                   </button>
                 );
