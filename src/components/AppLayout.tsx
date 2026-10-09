@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Icon, type IconName } from './Icon';
 import { BrandGlyph } from './ui/Brand';
+import { NotificationsBell } from './NotificationsBell';
 import { useAuth } from '../lib/auth';
 import { DashboardProvider, useDashboard } from '../lib/dashboard';
 import { JournalProvider, useJournal } from '../lib/journal';
@@ -217,6 +218,7 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
         </span>
       </div>
       <Clock />
+      <NotificationsBell />
     </header>
   );
 }

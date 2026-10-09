@@ -3,6 +3,9 @@ import type {
   AuthResponse,
   BillingPlan,
   DashboardData,
+  AlertPrefs,
+  AlertSettings,
+  AppNotification,
   HistoryPage,
   JournalData,
   PublicTrackRecord,
@@ -228,6 +231,8 @@ export interface TradeInput {
   entryPrice?: number | null;
   exitPrice?: number | null;
   lots?: number | null;
+  stopPrice?: number | null;
+  targetPrice?: number | null;
   notes?: string | null;
 }
 
@@ -240,6 +245,35 @@ export const journalApi = {
     }),
   remove: (predictionId: string) =>
     request<void>(`/journal/${predictionId}`, { method: 'DELETE' }),
+};
+
+// ---- Notifications ------------------------------------------------------------
+
+export const notificationsApi = {
+  list: (signal?: AbortSignal) =>
+    request<{ unread: number; items: AppNotification[] }>('/notifications', {
+      signal,
+    }),
+  markRead: () =>
+    request<void>('/notifications/read', { method: 'POST', body: {} }),
+  settings: () => request<AlertSettings>('/notifications/settings'),
+  saveSettings: (prefs: AlertPrefs) =>
+    request<{ prefs: AlertPrefs }>('/notifications/settings', {
+      method: 'PUT',
+      body: prefs,
+    }),
+  subscribe: (subscription: PushSubscriptionJSON) =>
+    request<void>('/notifications/push/subscribe', {
+      method: 'POST',
+      body: subscription,
+    }),
+  unsubscribe: (endpoint: string) =>
+    request<void>('/notifications/push/unsubscribe', {
+      method: 'POST',
+      body: { endpoint },
+    }),
+  test: () =>
+    request<void>('/notifications/test', { method: 'POST', body: {} }),
 };
 
 // ---- Public -----------------------------------------------------------------

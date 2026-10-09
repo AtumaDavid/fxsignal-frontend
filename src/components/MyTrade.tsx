@@ -69,6 +69,8 @@ function TradeForm({
       entry: mid.toFixed(precision(prediction)),
       exit: engineExit(prediction)?.price.toFixed(precision(prediction)) ?? '',
       lots: size.lots && size.lots > 0 ? size.lots.toFixed(2) : '',
+      stop: prediction.invalidationPrice.toFixed(precision(prediction)),
+      target: prediction.targetPrice.toFixed(precision(prediction)),
     };
   })();
   const prefilled = !trade;
@@ -79,6 +81,12 @@ function TradeForm({
     trade ? toInput(trade.exitPrice) : planned.exit
   );
   const [lots, setLots] = useState(trade ? toInput(trade.lots) : planned.lots);
+  const [stop, setStop] = useState(
+    trade ? toInput(trade.stopPrice) : planned.stop
+  );
+  const [target, setTarget] = useState(
+    trade ? toInput(trade.targetPrice) : planned.target
+  );
   const [notes, setNotes] = useState(trade?.notes ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +97,8 @@ function TradeForm({
       entry: parse(entry),
       exit: parse(exit),
       lots: parse(lots),
+      stop: parse(stop),
+      target: parse(target),
     };
     if (Object.values(values).some((v) => Number.isNaN(v))) {
       setError('Prices and size must be numbers.');
@@ -106,6 +116,8 @@ function TradeForm({
         entryPrice: values.entry,
         exitPrice: values.exit,
         lots: values.lots,
+        stopPrice: values.stop,
+        targetPrice: values.target,
         notes: notes.trim() || null,
       });
       onDone();
@@ -181,6 +193,33 @@ function TradeForm({
             onChange={(e) => setLots(e.target.value)}
           />
         </label>
+        <label className="field">
+          <span>Your stop</span>
+          <input
+            className="input"
+            inputMode="decimal"
+            placeholder="None"
+            value={stop}
+            onChange={(e) => setStop(e.target.value)}
+          />
+        </label>
+        <label className="field">
+          <span>Your target</span>
+          <input
+            className="input"
+            inputMode="decimal"
+            placeholder="None"
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+          />
+        </label>
+        <div className="field trade-auto-hint">
+          <span>Auto exit</span>
+          <small>
+            With a stop or target set, the exit is filled in for you when price
+            reaches it (checked on every 15-minute close).
+          </small>
+        </div>
       </div>
       <label className="field">
         <span>Notes</span>
@@ -290,6 +329,26 @@ export function MyTrade({ prediction }: { prediction: Prediction }) {
             }
           >
             {trade.pips === null ? 'Open' : `${signedPips(trade.pips)}p`}
+          </strong>
+        </div>
+        <div>
+          <span>Your stop / target</span>
+          <strong>
+            {price(pair, trade.stopPrice)} / {price(pair, trade.targetPrice)}
+          </strong>
+        </div>
+        <div>
+          <span>Exit</span>
+          <strong>
+            {trade.exitPrice === null
+              ? trade.stopPrice !== null || trade.targetPrice !== null
+                ? 'Watching'
+                : 'Open'
+              : trade.exitReason === 'target'
+                ? 'Target (auto)'
+                : trade.exitReason === 'stop'
+                  ? 'Stop (auto)'
+                  : 'Manual'}
           </strong>
         </div>
       </div>

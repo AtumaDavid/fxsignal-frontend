@@ -221,6 +221,12 @@ export interface UserTrade {
   entryPrice: number | null;
   exitPrice: number | null;
   lots: number | null;
+  /** The user's own stop / target; when set, the exit is detected automatically. */
+  stopPrice: number | null;
+  targetPrice: number | null;
+  exitedAt: string | null;
+  /** 'stop' | 'target' when detected automatically, 'manual' when typed. */
+  exitReason: string | null;
   notes: string | null;
   /** Signed by the user's side; null until entry and exit are both set. */
   pips: number | null;
@@ -266,4 +272,31 @@ export interface PublicTrackRecord extends Omit<
   days: number;
   generatedAt: string;
   recent: PublicCall[];
+}
+
+export interface AppNotification {
+  id: string;
+  kind: string;
+  title: string;
+  body: string;
+  predictionId: string | null;
+  createdAt: string;
+  read: boolean;
+}
+
+export type AlertGroup =
+  'newSignal' | 'entry' | 'result' | 'checkpoint' | 'myTrades';
+
+export interface AlertPrefs {
+  channels: { email: boolean; push: boolean };
+  events: Record<AlertGroup, boolean>;
+}
+
+export interface AlertSettings {
+  prefs: AlertPrefs;
+  email: string;
+  emailAvailable: boolean;
+  pushAvailable: boolean;
+  vapidPublicKey: string | null;
+  pushDevices: number;
 }

@@ -1,7 +1,9 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
 import { Spinner } from '../../components/ui/Empty';
 import { PasswordInput } from '../../components/ui/PasswordInput';
+import { AlertSettings } from '../../components/AlertSettings';
 import { authApi } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { dayDate, tzLabel } from '../../lib/format';
@@ -144,6 +146,21 @@ function PasswordForm() {
 }
 
 export default function Settings() {
+  const location = useLocation();
+  // Deep links such as /app/settings#alerts (from the bell). Runs after the
+  // shell's scroll-to-top on navigation.
+  useEffect(() => {
+    if (!location.hash) return;
+    const id = setTimeout(
+      () =>
+        document
+          .getElementById(location.hash.slice(1))
+          ?.scrollIntoView({ behavior: 'smooth' }),
+      50
+    );
+    return () => clearTimeout(id);
+  }, [location.hash]);
+
   const { logout } = useAuth();
   const { timeZone, setTimeZone } = usePrefs();
 
@@ -163,6 +180,18 @@ export default function Settings() {
             <p>How you appear in the app.</p>
           </div>
           <ProfileForm />
+        </section>
+
+        <section className="settings-section" id="alerts">
+          <div>
+            <h2>Alerts</h2>
+            <p>
+              Get told when a signal is published, triggers, hits its target or
+              stop, or is cancelled or exited early, and when your own journal
+              trade closes.
+            </p>
+          </div>
+          <AlertSettings />
         </section>
 
         <section className="settings-section">
