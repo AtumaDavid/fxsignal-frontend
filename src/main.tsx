@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from './components/AppLayout';
 import { AuthProvider } from './lib/auth';
 import { PrefsProvider } from './lib/prefs';
+import { TooltipLayer } from './components/ui/TooltipLayer';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -24,6 +25,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
       <PrefsProvider>
+        <TooltipLayer />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Landing />} />

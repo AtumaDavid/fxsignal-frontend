@@ -61,7 +61,9 @@ export default function MyJournal() {
       <div className="stack">
         <section className="kpis">
           <div className="kpi">
-            <span className="label">Trades logged</span>
+            <span className="label" data-tip="Trades you saved with Log trade.">
+              Trades logged
+            </span>
             <div className="kpi-value">{summary?.logged ?? '—'}</div>
             <span className="kpi-note">
               {summary
@@ -70,7 +72,12 @@ export default function MyJournal() {
             </span>
           </div>
           <div className="kpi">
-            <span className="label">Your win rate</span>
+            <span
+              className="label"
+              data-tip="Your closed trades that made pips ÷ all your closed trades."
+            >
+              Your win rate
+            </span>
             <div className="kpi-value">
               {winRate ? (
                 <>
@@ -88,14 +95,24 @@ export default function MyJournal() {
             </span>
           </div>
           <div className="kpi">
-            <span className="label">Your net pips</span>
+            <span
+              className="label"
+              data-tip="Your pips from your own entries and exits, on closed trades."
+            >
+              Your net pips
+            </span>
             <div className={`kpi-value ${pipClass(summary?.netPips)}`}>
               {summary ? signedPips(summary.netPips) : '—'}
             </div>
             <span className="kpi-note">Closed trades</span>
           </div>
           <div className="kpi">
-            <span className="label">Engine, same signals</span>
+            <span
+              className="label"
+              data-tip="The engine's result on exactly the signals you traded, for comparison."
+            >
+              Engine, same signals
+            </span>
             <div className={`kpi-value ${pipClass(summary?.engineNetPips)}`}>
               {summary ? signedPips(summary.engineNetPips) : '—'}
             </div>

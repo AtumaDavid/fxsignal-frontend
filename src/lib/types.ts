@@ -81,6 +81,11 @@ export interface Prediction {
   live?: LiveProgress | null;
   /** "Hold" call: id of the still-open earlier signal this window manages. */
   continuesId?: string | null;
+  /**
+   * This earlier trade is the pair's current signal because the latest
+   * analysis carried it (no new signal was published).
+   */
+  carried?: { reconfirmed: boolean; window: string; at: string } | null;
 }
 
 export interface MarketEvent {

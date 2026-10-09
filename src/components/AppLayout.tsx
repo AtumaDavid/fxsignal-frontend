@@ -17,6 +17,8 @@ import {
 import { usePrefs } from '../lib/prefs';
 
 interface NavItem {
+  /** Hover explanation. */
+  tip?: string;
   to: string;
   label: string;
   icon: IconName;
@@ -24,18 +26,64 @@ interface NavItem {
 }
 
 const MARKET_NAV: NavItem[] = [
-  { to: '/app', label: 'Overview', icon: 'grid', end: true },
-  { to: '/app/signals', label: 'Signals', icon: 'signal' },
-  { to: '/app/outlook', label: 'Week ahead', icon: 'layers' },
-  { to: '/app/calendar', label: 'Calendar', icon: 'calendar' },
-  { to: '/app/performance', label: 'Performance', icon: 'activity' },
-  { to: '/app/journal', label: 'My journal', icon: 'book' },
+  {
+    to: '/app',
+    label: 'Overview',
+    icon: 'grid',
+    end: true,
+    tip: 'Today at a glance: current signals, open trades, the session map and upcoming news.',
+  },
+  {
+    to: '/app/signals',
+    label: 'Signals',
+    icon: 'signal',
+    tip: 'Current signals with their chart, plan and reasoning.',
+  },
+  {
+    to: '/app/outlook',
+    label: 'Week ahead',
+    icon: 'layers',
+    tip: 'Weekend preparation: bias, key levels and scenarios for the coming week.',
+  },
+  {
+    to: '/app/calendar',
+    label: 'Calendar',
+    icon: 'calendar',
+    tip: 'Scheduled economic releases for USD, EUR and JPY that can move these pairs.',
+  },
+  {
+    to: '/app/performance',
+    label: 'Performance',
+    icon: 'activity',
+    tip: "How the engine's signals have done: hit rate, pips and every past signal.",
+  },
+  {
+    to: '/app/journal',
+    label: 'My journal',
+    icon: 'book',
+    tip: 'The trades you took, your results, and how they compare with the engine.',
+  },
 ];
 
 const ACCOUNT_NAV: NavItem[] = [
-  { to: '/app/billing', label: 'Plan & billing', icon: 'card' },
-  { to: '/app/settings', label: 'Settings', icon: 'settings' },
-  { to: '/app/methodology', label: 'Methodology', icon: 'info' },
+  {
+    to: '/app/billing',
+    label: 'Plan & billing',
+    icon: 'card',
+    tip: 'Your plan and what Pro adds.',
+  },
+  {
+    to: '/app/settings',
+    label: 'Settings',
+    icon: 'settings',
+    tip: 'Profile, alerts, time zone and password.',
+  },
+  {
+    to: '/app/methodology',
+    label: 'Methodology',
+    icon: 'info',
+    tip: 'Exactly how signals are made, managed and scored.',
+  },
 ];
 
 const TITLES: Record<string, string> = {
@@ -71,6 +119,7 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
       key={item.to}
       to={item.to}
       end={item.end}
+      data-tip={item.tip}
       className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
       onClick={onClose}
     >
@@ -158,7 +207,10 @@ function Clock() {
   const { timeZone } = usePrefs();
   const now = useNow(15_000);
   return (
-    <div className="clock" title="Market sessions are scheduled in UTC">
+    <div
+      className="clock"
+      data-tip="Forex sessions and signal windows are scheduled in UTC. Your local time is shown next to it."
+    >
       <span className="num">{time(new Date(now), 'utc')}</span>
       <span className="faint">UTC</span>
       {timeZone === 'local' && tzLabel('local') !== 'UTC' && (
@@ -195,6 +247,7 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
             <div
               key={pair}
               className={`ticker-item${index > 0 ? ' secondary' : ''}`}
+              data-tip="Last price from the latest 15-minute candle, and the change since yesterday's daily close."
             >
               <b>{pair}</b>
               <span className="num">{price(pair, quote?.price)}</span>
@@ -207,7 +260,11 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
           );
         })}
       </div>
-      <div className="clock" style={{ gap: 7 }}>
+      <div
+        className="clock"
+        style={{ gap: 7 }}
+        data-tip="The current trading session. Killzones are the first hours of London and New York, when most of the day's move usually happens."
+      >
         <span className={`dot ${open ? 'dot-live' : ''}`} />
         <span>
           {data

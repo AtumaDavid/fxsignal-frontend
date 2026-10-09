@@ -82,7 +82,12 @@ export default function Overview() {
 
         <section className="kpis" aria-label="Track record">
           <div className="kpi">
-            <span className="label">Hit rate</span>
+            <span
+              className="label"
+              data-tip="Targets ÷ (targets + stops). Only trades whose entry actually triggered count; early exits, cancellations and neutral calls are excluded."
+            >
+              Hit rate
+            </span>
             <div className="kpi-value">
               {totals?.hitRate !== null && totals?.hitRate !== undefined ? (
                 <>
@@ -100,7 +105,12 @@ export default function Overview() {
             </span>
           </div>
           <div className="kpi">
-            <span className="label">Net pips</span>
+            <span
+              className="label"
+              data-tip="Total pips won minus pips lost across settled trades, including early exits. Pips are measured from the middle of the entry zone."
+            >
+              Net pips
+            </span>
             <div
               className={`kpi-value ${totals && totals.netPips !== 0 ? (totals.netPips > 0 ? 'up' : 'down') : ''}`}
             >
@@ -113,7 +123,12 @@ export default function Overview() {
             </span>
           </div>
           <div className="kpi">
-            <span className="label">Signals settled</span>
+            <span
+              className="label"
+              data-tip="Signals whose result is known. Neutral and cancelled signals are listed but never scored."
+            >
+              Signals settled
+            </span>
             <div className="kpi-value">
               {totals ? totals.signals - totals.pending : '—'}
             </div>
@@ -124,7 +139,10 @@ export default function Overview() {
             </span>
           </div>
           <div className="kpi">
-            <span className="label">
+            <span
+              className="label"
+              data-tip="When the next session window opens: Asia 00:00, London 07:00, New York 12:00 UTC."
+            >
               {open ? 'Next signal' : 'Market opens'}
             </span>
             <div className="kpi-value num">

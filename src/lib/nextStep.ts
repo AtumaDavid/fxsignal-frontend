@@ -78,6 +78,18 @@ export function nextStep(p: Prediction, now = Date.now()): NextStep {
     };
 
   const live = p.live;
+  if (p.carried && live?.state === 'running')
+    return p.carried.reconfirmed
+      ? {
+          tone: 'hold',
+          title: 'Still valid — let it run',
+          detail: `The ${p.carried.window} analysis agrees with this trade, so there is no new signal. Stop ${stop}, target ${target}${live.pips !== null ? `, now ${signedPips(live.pips)}p` : ''}.`,
+        }
+      : {
+          tone: 'wait',
+          title: 'Manage on its own levels',
+          detail: `The ${p.carried.window} analysis is neutral now. Keep the stop at ${stop} and the target at ${target}${live.pips !== null ? ` (now ${signedPips(live.pips)}p)` : ''}; no new entry.`,
+        };
   if (live?.state === 'target')
     return {
       tone: 'done',

@@ -38,6 +38,7 @@ export function SignalDetail({
   summary = true,
   chart = false,
   focusTrade = false,
+  wide = false,
 }: {
   prediction: Prediction;
   last?: number | null;
@@ -47,6 +48,8 @@ export function SignalDetail({
   chart?: boolean;
   /** Open "My trade" ready to log. */
   focusTrade?: boolean;
+  /** Two columns: chart + reasoning left, size + trade right. */
+  wide?: boolean;
 }) {
   const { timeZone } = usePrefs();
   const p = prediction;
@@ -61,7 +64,7 @@ export function SignalDetail({
       p.live.state === 'target' ||
       p.live.state === 'stopped');
 
-  return (
+  const summaryBlock = (
     <>
       {summary && (
         <div className="detail-section">
@@ -76,16 +79,22 @@ export function SignalDetail({
           )}
         </div>
       )}
-
+    </>
+  );
+  const chartBlock = (
+    <>
       {chart && (
         <div className="detail-section">
           <span className="label">Chart</span>
           <div className="panel">
-            <SignalChart prediction={p} height={260} />
+            <SignalChart prediction={p} height={wide ? 380 : 260} />
           </div>
         </div>
       )}
-
+    </>
+  );
+  const sizeBlock = (
+    <>
       {tradeable && open && p.stopPips !== null && (
         <div className="detail-section">
           <span className="label">
@@ -98,12 +107,18 @@ export function SignalDetail({
           <PositionSizer prediction={p} />
         </div>
       )}
-
+    </>
+  );
+  const tradeBlock = (
+    <>
       <div className="detail-section" id="my-trade">
         <span className="label">My trade</span>
         <MyTrade prediction={p} autoOpen={focusTrade} />
       </div>
-
+    </>
+  );
+  const whyBlock = (
+    <>
       <div className="detail-section">
         <span className="label">Why this trade</span>
         {p.playbook && <div className="callout">{p.playbook}</div>}
@@ -116,7 +131,10 @@ export function SignalDetail({
           </ul>
         )}
       </div>
-
+    </>
+  );
+  const techBlock = (
+    <>
       <details className="more">
         <summary>
           Technical details
@@ -180,12 +198,43 @@ export function SignalDetail({
           </span>
         </div>
       </details>
-
+    </>
+  );
+  const noteBlock = (
+    <>
       <p className="disclaimer">
         <Icon name="info" size={14} />
         Market analysis for research and education, not a recommendation to buy
         or sell.
       </p>
+    </>
+  );
+
+  if (wide)
+    return (
+      <div className="plan-grid">
+        <div className="plan-main">
+          {summaryBlock}
+          {chartBlock}
+          {whyBlock}
+        </div>
+        <div className="plan-side">
+          {sizeBlock}
+          {tradeBlock}
+          {techBlock}
+          {noteBlock}
+        </div>
+      </div>
+    );
+  return (
+    <>
+      {summaryBlock}
+      {chartBlock}
+      {sizeBlock}
+      {tradeBlock}
+      {whyBlock}
+      {techBlock}
+      {noteBlock}
     </>
   );
 }
@@ -268,6 +317,7 @@ export function SignalDrawer({
             prediction={prediction}
             last={last}
             chart
+            wide
             focusTrade={focus === 'trade'}
           />
         </div>

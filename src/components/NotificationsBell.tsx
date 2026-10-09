@@ -75,6 +75,7 @@ export function NotificationsBell() {
         onClick={() => void toggle()}
         aria-label={unread > 0 ? `Alerts, ${unread} unread` : 'Alerts'}
         aria-expanded={open}
+        data-tip="Alerts: new signals, entries, targets, stops, exits and your journal trades."
       >
         <Icon name="bell" size={17} />
         {unread > 0 && (

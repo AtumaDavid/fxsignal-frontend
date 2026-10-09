@@ -100,7 +100,7 @@ export function SessionMap({ marketOpen }: { marketOpen: boolean }) {
               {SESSIONS.map((s) => (
                 <span
                   key={s.name}
-                  title={bandTitle(s)}
+                  data-tip={bandTitle(s)}
                   className={`session-band${live(s) ? ' is-live' : ''}`}
                   style={{
                     left: pct(s.start),
@@ -115,7 +115,7 @@ export function SessionMap({ marketOpen }: { marketOpen: boolean }) {
               {KILLZONES.map((k) => (
                 <span
                   key={k.name}
-                  title={bandTitle(k)}
+                  data-tip={bandTitle(k)}
                   className={`session-band kz${live(k) ? ' is-live' : ''}`}
                   style={{
                     left: pct(k.start),
@@ -243,6 +243,18 @@ export function EventRow({
   );
 }
 
+const OUTCOME_TIP: Record<OutcomeStatus, string> = {
+  HIT: 'The target traded before the stop.',
+  MISSED: 'The stop traded before the target.',
+  CLOSED_EARLY:
+    'Exited on an H1 close with strong evidence against the trade. Counted in net pips, not the hit rate.',
+  CANCELLED:
+    'Withdrawn before entry because the setup broke. Never a trade; not scored.',
+  EXPIRED:
+    'The window ended with no target or stop (marked to the last price), or the entry was never reached.',
+  PENDING: 'Still open: followed until its target or stop.',
+};
+
 const OUTCOME = {
   HIT: { label: 'Target', cls: 'tag-up' },
   MISSED: { label: 'Stopped', cls: 'tag-down' },
@@ -254,7 +266,11 @@ const OUTCOME = {
 
 export function OutcomeTag({ status }: { status: OutcomeStatus }) {
   const meta = OUTCOME[status];
-  return <span className={`tag ${meta.cls}`}>{meta.label}</span>;
+  return (
+    <span className={`tag ${meta.cls}`} data-tip={OUTCOME_TIP[status]}>
+      {meta.label}
+    </span>
+  );
 }
 
 /**

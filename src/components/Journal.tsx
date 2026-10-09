@@ -185,14 +185,31 @@ export function Journal() {
               <tr>
                 <th>Published</th>
                 <th>Pair</th>
-                <th>Call</th>
+                <th data-tip="The engine's call: Long (buy), Short (sell) or Neutral (no trade).">
+                  Call
+                </th>
                 <th>Session</th>
-                <th className="r">Entry</th>
+                <th
+                  className="r"
+                  data-tip="Middle of the entry zone, where fills are assumed."
+                >
+                  Entry
+                </th>
                 <th className="r">Target</th>
                 <th className="r">Stop</th>
-                <th className="r">Conf.</th>
+                <th
+                  className="r"
+                  data-tip="Confidence: how strongly the timeframes agreed. Not a win probability."
+                >
+                  Conf.
+                </th>
                 <th>Result</th>
-                <th className="r">Pips</th>
+                <th
+                  className="r"
+                  data-tip="Result in pips, signed in the trade direction (+ is profit), from the middle of the entry zone."
+                >
+                  Pips
+                </th>
               </tr>
             </thead>
             <tbody>

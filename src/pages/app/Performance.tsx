@@ -101,7 +101,12 @@ export default function Performance() {
 
         <section className="kpis">
           <div className="kpi">
-            <span className="label">Hit rate</span>
+            <span
+              className="label"
+              data-tip="Targets ÷ (targets + stops). Only trades whose entry actually triggered count; early exits, cancellations and neutral calls are excluded."
+            >
+              Hit rate
+            </span>
             <div className="kpi-value">
               {totals?.hitRate != null ? (
                 <>
@@ -117,7 +122,12 @@ export default function Performance() {
             </span>
           </div>
           <div className="kpi">
-            <span className="label">Net pips</span>
+            <span
+              className="label"
+              data-tip="Total pips won minus pips lost across settled trades, including early exits. Pips are measured from the middle of the entry zone."
+            >
+              Net pips
+            </span>
             <div
               className={`kpi-value ${totals && totals.netPips > 0 ? 'up' : totals && totals.netPips < 0 ? 'down' : ''}`}
             >
@@ -126,7 +136,12 @@ export default function Performance() {
             <span className="kpi-note">Scored trades, both pairs</span>
           </div>
           <div className="kpi">
-            <span className="label">Published</span>
+            <span
+              className="label"
+              data-tip="Every signal published in this period, whatever its result."
+            >
+              Published
+            </span>
             <div className="kpi-value">{totals?.signals ?? '—'}</div>
             <span className="kpi-note">
               {totals
@@ -135,7 +150,12 @@ export default function Performance() {
             </span>
           </div>
           <div className="kpi">
-            <span className="label">Avg. confidence</span>
+            <span
+              className="label"
+              data-tip="Average agreement between the daily, 4-hour, 1-hour and 15-minute charts. It is not a win probability."
+            >
+              Avg. confidence
+            </span>
             <div className="kpi-value">
               {totals?.avgConfidence != null ? (
                 <>

@@ -1354,7 +1354,7 @@ button:disabled {
   right: 0;
   bottom: 0;
   z-index: 90;
-  width: min(640px, 100vw);
+  width: min(1180px, 100vw);
   display: flex;
   flex-direction: column;
   background: var(--bg-raised);
@@ -3397,5 +3397,61 @@ button:disabled {
   }
   .gs-steps li:first-child {
     border-top: 0;
+  }
+}
+
+.ticket-head-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ---- Hover tooltips ([data-tip]) ------------------------------------------------ */
+
+.tooltip {
+  position: fixed;
+  z-index: 300;
+  transform: translate(-50%, -100%);
+  padding: 8px 11px;
+  border-radius: 7px;
+  background: #222228;
+  border: 1px solid var(--line-heavy);
+  box-shadow: var(--shadow-pop);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text);
+  pointer-events: none;
+  animation: fade-in 100ms ease;
+}
+.tooltip.below {
+  transform: translate(-50%, 0);
+}
+[data-tip] {
+  cursor: help;
+}
+button[data-tip],
+a[data-tip],
+.nav-link[data-tip] {
+  cursor: pointer;
+}
+
+/* ---- Wide trade plan ------------------------------------------------------------ */
+
+.plan-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.plan-main,
+.plan-side {
+  display: grid;
+  gap: 22px;
+  align-content: start;
+  min-width: 0;
+}
+@media (max-width: 1020px) {
+  .plan-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

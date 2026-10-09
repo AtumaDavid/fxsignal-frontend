@@ -92,19 +92,27 @@ export function PriceLadder({
           style={{ left: `${pos(p.targetPrice)}%` }}
         />
         {last !== null && last !== undefined && (
-          <span className="ladder-now" style={{ left: `${pos(last)}%` }}>
+          <span
+            className="ladder-now"
+            style={{ left: `${pos(last)}%` }}
+            data-tip="Last price, from the latest 15-minute candle."
+          >
             <span>{price(p.pairCode, last)}</span>
           </span>
         )}
       </div>
       <div className="ladder-labels">
         <div>
-          <span>Stop</span>
+          <span data-tip="Stop loss. If price trades here the idea is wrong; the trade is closed at this price.">
+            Stop
+          </span>
           <strong>{price(p.pairCode, p.invalidationPrice)}</strong>
           <em>−{pipsFromMid(p.invalidationPrice).toFixed(1)}p</em>
         </div>
         <div>
-          <span>Entry zone</span>
+          <span data-tip="Enter anywhere inside this range, after a 15-minute candle closes in the trade direction. No fill here means no trade.">
+            Entry zone
+          </span>
           <strong>
             {price(p.pairCode, p.entryLow)}–
             {price(p.pairCode, p.entryHigh).slice(-3)}
@@ -112,7 +120,9 @@ export function PriceLadder({
           <em>{((p.entryHigh - p.entryLow) / pipSize).toFixed(1)}p wide</em>
         </div>
         <div>
-          <span>Target</span>
+          <span data-tip="Take profit. Always at least twice the distance to the stop (2R), measured from the middle of the zone.">
+            Target
+          </span>
           <strong>{price(p.pairCode, p.targetPrice)}</strong>
           <em>+{pipsFromMid(p.targetPrice).toFixed(1)}p</em>
         </div>
@@ -229,7 +239,10 @@ export function LiveStatus({
         <strong className={tone}>{headline}</strong>
         <span className="live-detail">{detail}</span>
         {live.asOf && (
-          <span className="live-asof">
+          <span
+            className="live-asof"
+            data-tip="Progress is replayed from closed 15-minute candles, so it can be up to about 15 minutes behind the live price."
+          >
             as of {time(live.asOf, timeZone)} {tzLabel(timeZone)}
           </span>
         )}
@@ -315,7 +328,12 @@ export function NextStepBox({ prediction }: { prediction: Prediction }) {
         <Icon name={STEP_ICON[step.tone]} size={14} />
       </span>
       <div>
-        <span className="next-step-label">Next step</span>
+        <span
+          className="next-step-label"
+          data-tip="What to do with this signal right now. It updates as price moves."
+        >
+          Next step
+        </span>
         <strong>{step.title}</strong>
         <p>{step.detail}</p>
       </div>
@@ -363,14 +381,31 @@ export function SignalTicket({
           <div>
             <h3>{p.pairCode}</h3>
             <p>
-              {p.session} window ·{' '}
-              {left > 0
-                ? `until ${time(p.expiresAt, timeZone)} ${tzLabel(timeZone)}`
-                : 'ended'}
+              {p.carried
+                ? `${p.session} ${time(p.validFrom, timeZone)} trade · ${p.carried.reconfirmed ? 're-confirmed' : 'checked'} by ${p.carried.window}`
+                : `${p.session} window · ${
+                    left > 0
+                      ? `until ${time(p.expiresAt, timeZone)} ${tzLabel(timeZone)}`
+                      : 'ended'
+                  }`}
             </p>
           </div>
         </div>
-        <div className={`ticket-direction ${tone}`}>{callLabel(p)}</div>
+        <div className="ticket-head-right">
+          {p.carried && (
+            <span
+              className={`tag ${p.carried.reconfirmed ? 'tag-up' : ''}`}
+              data-tip={
+                p.carried.reconfirmed
+                  ? `The ${p.carried.window} analysis agreed with this open trade, so no new signal was published. It is still the same trade and is counted once.`
+                  : `The ${p.carried.window} analysis turned neutral. The trade keeps its own stop and target; there is no new entry.`
+              }
+            >
+              {p.carried.reconfirmed ? 'Still valid' : 'Not re-confirmed'}
+            </span>
+          )}
+          <div className={`ticket-direction ${tone}`}>{callLabel(p)}</div>
+        </div>
       </div>
 
       <div className="ticket-body">
@@ -419,22 +454,36 @@ export function SignalTicket({
 
       <div className="ticket-foot">
         <div className="grow ticket-expiry">
-          <span>
-            {left > 0
-              ? `${finished ? 'Window ends in' : 'Time left'} ${duration(left)}`
-              : 'Window ended'}
-          </span>
-          <div className="meter">
-            <span style={{ width: `${elapsed}%` }} />
-          </div>
+          {p.carried ? (
+            <span>Followed until its target or stop</span>
+          ) : (
+            <>
+              <span>
+                {left > 0
+                  ? `${finished ? 'Window ends in' : 'Time left'} ${duration(left)}`
+                  : 'Window ended'}
+              </span>
+              <div className="meter">
+                <span style={{ width: `${elapsed}%` }} />
+              </div>
+            </>
+          )}
         </div>
         {onLogTrade && tradeable && (
-          <button className="btn btn-ghost btn-sm" onClick={onLogTrade}>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={onLogTrade}
+            data-tip="Save this trade to your journal, prefilled from the signal. The exit is filled in automatically when your stop or target is hit."
+          >
             Log trade
           </button>
         )}
         {onOpen && (
-          <button className="btn btn-primary btn-sm" onClick={onOpen}>
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={onOpen}
+            data-tip="The full plan: chart, position size for your account, your trade and why this call was made."
+          >
             Open plan <Icon name="arrowRight" size={13} />
           </button>
         )}
