@@ -28,12 +28,12 @@ const EVENTS: { key: AlertGroup; label: string; hint: string }[] = [
   {
     key: 'entry',
     label: 'Entry and trade management',
-    hint: 'Entry triggered, move the stop to entry (+1R), TP1 hit.',
+    hint: 'Entry triggered; TP1 hit (move stop to entry); TP2 hit (move stop to TP1).',
   },
   {
     key: 'result',
     label: 'Trade closed',
-    hint: 'TP2, stop or breakeven, as soon as it shows on a closed 15-minute candle.',
+    hint: 'TP3, stop, or closed at the moved stop, as soon as it shows on a closed 15-minute candle.',
   },
   {
     key: 'checkpoint',
