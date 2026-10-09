@@ -894,6 +894,10 @@ button:disabled {
 .topbar-menu {
   display: none;
 }
+.topbar-back {
+  display: inline-grid;
+  margin-left: -8px;
+}
 .topbar-title {
   font-size: 13px;
   font-weight: 500;
@@ -2628,6 +2632,14 @@ button:disabled {
   .content {
     padding-left: 16px;
     padding-right: 16px;
+  }
+  .topbar {
+    gap: 8px;
+  }
+  .topbar-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .content {
     padding-top: 20px;

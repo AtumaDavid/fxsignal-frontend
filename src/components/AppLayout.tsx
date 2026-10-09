@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Icon, type IconName } from './Icon';
 import { BrandGlyph } from './ui/Brand';
 import { NotificationsBell } from './NotificationsBell';
@@ -249,12 +249,36 @@ function Clock() {
 
 function Topbar({ onMenu }: { onMenu: () => void }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { data } = useDashboard();
   const open = data?.marketStatus === 'OPEN';
+  const isSubpage = location.pathname !== '/app';
   // Installed (Home Screen) apps have no browser reload button.
   const [standalone] = useState(isStandalone);
+
+  function goBack() {
+    // BrowserRouter stores an index in history.state. Using it prevents a
+    // direct deep link from sending someone out of the installed app.
+    const historyState = window.history.state as { idx?: number } | null;
+    if (typeof historyState?.idx === 'number' && historyState.idx > 0) {
+      navigate(-1);
+    } else {
+      navigate('/app');
+    }
+  }
+
   return (
     <header className="topbar">
+      {isSubpage && (
+        <button
+          className="icon-btn topbar-back"
+          onClick={goBack}
+          aria-label="Go back"
+          data-tip="Go back to the previous page"
+        >
+          <Icon name="arrowLeft" size={18} />
+        </button>
+      )}
       <button
         className="icon-btn topbar-menu"
         onClick={onMenu}
