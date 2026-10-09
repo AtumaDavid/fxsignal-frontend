@@ -3,6 +3,8 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Icon, type IconName } from './Icon';
 import { BrandGlyph } from './ui/Brand';
 import { NotificationsBell } from './NotificationsBell';
+import { PullToRefresh } from './PullToRefresh';
+import { isStandalone } from '../lib/push';
 import { useAuth } from '../lib/auth';
 import { DashboardProvider, useDashboard } from '../lib/dashboard';
 import { JournalProvider, useJournal } from '../lib/journal';
@@ -249,6 +251,8 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
   const location = useLocation();
   const { data } = useDashboard();
   const open = data?.marketStatus === 'OPEN';
+  // Installed (Home Screen) apps have no browser reload button.
+  const [standalone] = useState(isStandalone);
   return (
     <header className="topbar">
       <button
@@ -297,6 +301,16 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
         </span>
       </div>
       <Clock />
+      {standalone && (
+        <button
+          className="icon-btn"
+          onClick={() => window.location.reload()}
+          aria-label="Refresh"
+          data-tip="Refresh. You can also pull down from the top of the page."
+        >
+          <Icon name="refresh" size={16} />
+        </button>
+      )}
       <NotificationsBell />
     </header>
   );
@@ -312,6 +326,7 @@ function Shell() {
 
   return (
     <div className="shell">
+      <PullToRefresh />
       <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
       <div className="main">
         <Topbar onMenu={() => setMenuOpen(true)} />
