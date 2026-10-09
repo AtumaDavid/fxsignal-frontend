@@ -1,4 +1,6 @@
-import { Icon } from './Icon';
+import { Icon, type IconName } from './Icon';
+import { InfoTip } from './ui/InfoTip';
+import { nextStep, type StepTone } from '../lib/nextStep';
 import {
   PAIR_NAMES,
   callLabel,
@@ -97,7 +99,7 @@ export function PriceLadder({
       </div>
       <div className="ladder-labels">
         <div>
-          <span>Invalidation</span>
+          <span>Stop</span>
           <strong>{price(p.pairCode, p.invalidationPrice)}</strong>
           <em>−{pipsFromMid(p.invalidationPrice).toFixed(1)}p</em>
         </div>
@@ -294,14 +296,45 @@ export function CheckpointStatus({ prediction }: { prediction: Prediction }) {
   );
 }
 
+const STEP_ICON: Record<StepTone, IconName> = {
+  act: 'arrowRight',
+  wait: 'clock',
+  hold: 'check',
+  done: 'check',
+  skip: 'close',
+  exit: 'info',
+};
+
+/** The one thing to do with this signal right now. Leads every card. */
+export function NextStepBox({ prediction }: { prediction: Prediction }) {
+  const now = useNow(30_000);
+  const step = nextStep(prediction, now);
+  return (
+    <div className={`next-step step-${step.tone}`} role="status">
+      <span className="next-step-icon">
+        <Icon name={STEP_ICON[step.tone]} size={14} />
+      </span>
+      <div>
+        <span className="next-step-label">Next step</span>
+        <strong>{step.title}</strong>
+        <p>{step.detail}</p>
+      </div>
+    </div>
+  );
+}
+
 export function SignalTicket({
   prediction,
   last,
   onOpen,
+  onLogTrade,
 }: {
   prediction: Prediction;
   last?: number | null;
+  /** Opens the full plan (chart, size, reasoning). */
   onOpen?: () => void;
+  /** Opens the plan straight at "My trade". */
+  onLogTrade?: () => void;
 }) {
   const { timeZone } = usePrefs();
   const now = useNow(30_000);
@@ -314,6 +347,14 @@ export function SignalTicket({
     100,
     Math.max(0, ((now - start) / (end - start)) * 100)
   );
+  const finished =
+    p.outcome?.status !== undefined && p.outcome.status !== 'PENDING';
+  const tradeable = p.direction !== 'NEUTRAL' && !p.continuesId;
+  const showProgress =
+    p.live &&
+    (p.live.state === 'running' ||
+      p.live.state === 'target' ||
+      p.live.state === 'stopped');
 
   return (
     <article className="ticket">
@@ -321,96 +362,80 @@ export function SignalTicket({
         <div className="ticket-pair">
           <div>
             <h3>{p.pairCode}</h3>
-            <p>{PAIR_NAMES[p.pairCode]}</p>
+            <p>
+              {p.session} window ·{' '}
+              {left > 0
+                ? `until ${time(p.expiresAt, timeZone)} ${tzLabel(timeZone)}`
+                : 'ended'}
+            </p>
           </div>
         </div>
-        <span className="tag">{engineLabel(p.engine)}</span>
+        <div className={`ticket-direction ${tone}`}>{callLabel(p)}</div>
       </div>
 
-      <div className="ticket-call">
-        <div className={`ticket-direction ${tone}`}>
-          {callLabel(p)}
-          <small>
-            {p.continuesId
-              ? 'Managing the open trade from an earlier window · no new entry'
-              : p.direction === 'NEUTRAL'
-                ? 'No trade this window — stand aside'
-                : `${p.session} window · until ${time(p.expiresAt, timeZone)} ${tzLabel(timeZone)}`}
-          </small>
-        </div>
-        <div className="ticket-confidence">
-          <div className="ticket-confidence-top">
-            <span>Confidence</span>
-            <span className="num">{p.confidence}%</span>
-          </div>
-          <div className="meter meter-ink">
-            <span style={{ width: `${p.confidence}%` }} />
-          </div>
-        </div>
+      <div className="ticket-body">
+        <NextStepBox prediction={p} />
+        {showProgress && !finished && (
+          <LiveStatus prediction={p} live={p.live!} />
+        )}
       </div>
 
-      <CheckpointStatus prediction={p} />
-      {p.live && <LiveStatus prediction={p} live={p.live} />}
+      {tradeable && (
+        <PriceLadder prediction={p} last={p.live?.lastPrice ?? last} />
+      )}
 
-      <PriceLadder prediction={p} last={p.live?.lastPrice ?? last} />
-
-      <div className="ticket-stats">
-        <div>
-          <span>Reward : risk</span>
-          <strong>
-            {p.riskReward !== null ? `${p.riskReward.toFixed(2)}R` : '—'}
-          </strong>
-        </div>
-        <div>
-          <span>Risk</span>
-          <strong>
-            {p.stopPips !== null ? `${p.stopPips.toFixed(1)}p` : '—'}
-          </strong>
-        </div>
-        <div>
-          <span>Reward</span>
-          <strong>
-            {p.targetPips !== null ? `${p.targetPips.toFixed(1)}p` : '—'}
-          </strong>
-        </div>
-        <div>
-          <span>H1 ATR</span>
-          <strong>
-            {p.atrPips !== null ? `${p.atrPips.toFixed(1)}p` : '—'}
-          </strong>
-        </div>
-      </div>
-
-      {p.timeframeBias && p.timeframeBias.length > 0 && (
-        <div className="ticket-votes">
-          <div className="ticket-votes-head">
-            <span>Timeframe votes</span>
+      {tradeable && (
+        <div className="ticket-stats ticket-stats-3">
+          <div>
             <span>
-              {isContextModel(p.timeframeBias)
-                ? 'D · H4 context → H1 execution → M15'
-                : 'monthly → M15'}
+              Reward : risk{' '}
+              <InfoTip label="reward to risk">
+                How much the target pays for each unit risked to the stop. 2R
+                means a win makes twice what a loss costs.
+              </InfoTip>
             </span>
+            <strong>
+              {p.riskReward !== null ? `${p.riskReward.toFixed(2)}R` : '—'}
+            </strong>
           </div>
-          <TimeframeVotes votes={p.timeframeBias} />
+          <div>
+            <span>Risk to stop</span>
+            <strong>
+              {p.stopPips !== null ? `${p.stopPips.toFixed(1)} pips` : '—'}
+            </strong>
+          </div>
+          <div>
+            <span>
+              Confidence{' '}
+              <InfoTip label="confidence">
+                How strongly the daily, 4-hour, 1-hour and 15-minute charts
+                agree. It is not the chance of winning.
+              </InfoTip>
+            </span>
+            <strong>{p.confidence}%</strong>
+          </div>
         </div>
       )}
 
       <div className="ticket-foot">
         <div className="grow ticket-expiry">
-          <div className="ticket-expiry-top">
-            <span>
-              {left > 0
-                ? `${p.outcome?.status === 'CANCELLED' || p.outcome?.status === 'CLOSED_EARLY' ? 'Window ends in' : 'Expires in'} ${duration(left)}`
-                : 'Expired — settling'}
-            </span>
-          </div>
+          <span>
+            {left > 0
+              ? `${finished ? 'Window ends in' : 'Time left'} ${duration(left)}`
+              : 'Window ended'}
+          </span>
           <div className="meter">
             <span style={{ width: `${elapsed}%` }} />
           </div>
         </div>
+        {onLogTrade && tradeable && (
+          <button className="btn btn-ghost btn-sm" onClick={onLogTrade}>
+            Log trade
+          </button>
+        )}
         {onOpen && (
-          <button className="btn btn-secondary btn-sm" onClick={onOpen}>
-            Reasoning <Icon name="arrowRight" size={13} />
+          <button className="btn btn-primary btn-sm" onClick={onOpen}>
+            Open plan <Icon name="arrowRight" size={13} />
           </button>
         )}
       </div>

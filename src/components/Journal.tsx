@@ -189,7 +189,7 @@ export function Journal() {
                 <th>Session</th>
                 <th className="r">Entry</th>
                 <th className="r">Target</th>
-                <th className="r">Invalidation</th>
+                <th className="r">Stop</th>
                 <th className="r">Conf.</th>
                 <th>Result</th>
                 <th className="r">Pips</th>

@@ -250,13 +250,26 @@ function TradeForm({
 }
 
 /** "I took this trade": the user's own entry, exit, size and notes on a signal. */
-export function MyTrade({ prediction }: { prediction: Prediction }) {
+export function MyTrade({
+  prediction,
+  autoOpen = false,
+}: {
+  prediction: Prediction;
+  /** Start with the form open (the card's "Log trade" button). */
+  autoOpen?: boolean;
+}) {
   const { data, error, tradeFor, remove, save } = useJournal();
   const [editing, setEditing] = useState(false);
+  const [autoOpened, setAutoOpened] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [closing, setClosing] = useState(false);
   const trade = tradeFor(prediction.id);
   const result = engineExit(prediction);
+  // "Log trade": open the form once the journal has loaded, if not logged yet.
+  if (autoOpen && !autoOpened && data && !trade && !prediction.continuesId) {
+    setAutoOpened(true);
+    setEditing(true);
+  }
 
   if (error && !data)
     return (

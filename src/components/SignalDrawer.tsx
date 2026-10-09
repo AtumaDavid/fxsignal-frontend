@@ -1,11 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { Icon } from './Icon';
 import {
-  CheckpointStatus,
   LiveStatus,
+  NextStepBox,
   PriceLadder,
+  TimeframeVotes,
   engineLabel,
 } from './SignalTicket';
+import { InfoTip } from './ui/InfoTip';
 import { SignalChart } from './Charts';
 import { MyTrade } from './MyTrade';
 import { PositionSizer } from './PositionSizer';
@@ -33,181 +35,156 @@ const OUTCOME_LABEL = {
 export function SignalDetail({
   prediction,
   last,
+  summary = true,
+  chart = false,
+  focusTrade = false,
 }: {
   prediction: Prediction;
   last?: number | null;
+  /** Show the next step + levels (off where the card is already beside it). */
+  summary?: boolean;
+  /** Include the price chart. */
+  chart?: boolean;
+  /** Open "My trade" ready to log. */
+  focusTrade?: boolean;
 }) {
   const { timeZone } = usePrefs();
   const p = prediction;
   const outcome = p.outcome;
+  const tradeable = p.direction !== 'NEUTRAL' && !p.continuesId;
+  const open =
+    new Date(p.expiresAt).getTime() > Date.now() &&
+    (outcome?.status ?? 'PENDING') === 'PENDING';
+  const showProgress =
+    p.live &&
+    (p.live.state === 'running' ||
+      p.live.state === 'target' ||
+      p.live.state === 'stopped');
 
   return (
     <>
-      <div className="detail-section">
-        <span className="label">Levels</span>
-        <div className="live-flush">
-          <CheckpointStatus prediction={p} />
-        </div>
-        {p.live && p.live.state !== 'neutral' && (
-          <div className="live-flush">
-            <LiveStatus prediction={p} live={p.live} />
-          </div>
-        )}
-        <PriceLadder prediction={p} last={p.live?.lastPrice ?? last} />
-      </div>
-
-      {new Date(p.expiresAt).getTime() > Date.now() &&
-        p.direction !== 'NEUTRAL' &&
-        p.stopPips !== null && (
-          <div className="detail-section">
-            <span className="label">Position size</span>
-            <PositionSizer prediction={p} />
-          </div>
-        )}
-
-      <div className="detail-section">
-        <span className="label">My trade</span>
-        <MyTrade prediction={p} />
-      </div>
-
-      <div className="detail-section">
-        <span className="label">Reasoning</span>
-        <p className="prose">{p.rationale}</p>
-      </div>
-
-      {p.playbook && (
+      {summary && (
         <div className="detail-section">
-          <span className="label">Session playbook</span>
-          <div className="callout">{p.playbook}</div>
+          <NextStepBox prediction={p} />
+          {showProgress && (
+            <div className="live-flush">
+              <LiveStatus prediction={p} live={p.live!} />
+            </div>
+          )}
+          {tradeable && (
+            <PriceLadder prediction={p} last={p.live?.lastPrice ?? last} />
+          )}
         </div>
       )}
 
-      {p.factors.length > 0 && (
+      {chart && (
         <div className="detail-section">
-          <span className="label">Factors</span>
+          <span className="label">Chart</span>
+          <div className="panel">
+            <SignalChart prediction={p} height={260} />
+          </div>
+        </div>
+      )}
+
+      {tradeable && open && p.stopPips !== null && (
+        <div className="detail-section">
+          <span className="label">
+            Position size{' '}
+            <InfoTip label="position size">
+              Lots that risk your chosen % of the account if the stop is hit.
+              Saved on this device.
+            </InfoTip>
+          </span>
+          <PositionSizer prediction={p} />
+        </div>
+      )}
+
+      <div className="detail-section" id="my-trade">
+        <span className="label">My trade</span>
+        <MyTrade prediction={p} autoOpen={focusTrade} />
+      </div>
+
+      <div className="detail-section">
+        <span className="label">Why this trade</span>
+        {p.playbook && <div className="callout">{p.playbook}</div>}
+        <p className="prose">{p.rationale}</p>
+        {p.factors.length > 0 && (
           <ul className="factor-list">
             {p.factors.map((factor) => (
               <li key={factor}>{factor}</li>
             ))}
           </ul>
-        </div>
-      )}
-
-      {p.timeframeBias && p.timeframeBias.length > 0 && (
-        <div className="detail-section">
-          <span className="label">Timeframe votes</span>
-          <div className="panel table-wrap">
-            <table className="table vote-table">
-              <thead>
-                <tr>
-                  <th>Timeframe</th>
-                  <th>Bias</th>
-                  <th className="r">Score (−100…+100)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {p.timeframeBias.map((vote) => (
-                  <tr key={vote.timeframe}>
-                    <td className="strong mono">{vote.timeframe}</td>
-                    <td>
-                      <span className={`tag tag-${directionTone(vote.bias)}`}>
-                        {vote.bias.toLowerCase()}
-                      </span>
-                    </td>
-                    <td className="r num">
-                      {vote.score > 0 ? `+${vote.score}` : vote.score}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      <div className="detail-section">
-        <span className="label">Specification</span>
-        <div className="kv">
-          <div>
-            <span>Published</span>
-            <strong>{dateTime(p.validFrom, timeZone)}</strong>
-          </div>
-          <div>
-            <span>Expires</span>
-            <strong>{dateTime(p.expiresAt, timeZone)}</strong>
-          </div>
-          <div>
-            <span>Reward : risk</span>
-            <strong>
-              {p.riskReward !== null ? `${p.riskReward.toFixed(2)}R` : '—'}
-            </strong>
-          </div>
-          <div>
-            <span>Confidence</span>
-            <strong>{p.confidence}%</strong>
-          </div>
-          <div>
-            <span>Risk / reward</span>
-            <strong>
-              {p.stopPips ?? '—'}p / {p.targetPips ?? '—'}p
-            </strong>
-          </div>
-          <div>
-            <span>H1 ATR</span>
-            <strong>{p.atrPips !== null ? `${p.atrPips}p` : '—'}</strong>
-          </div>
-          <div>
-            <span>Engine</span>
-            <strong>{engineLabel(p.engine)}</strong>
-          </div>
-          <div>
-            <span>Model</span>
-            <strong>{p.modelName ?? '—'}</strong>
-          </div>
-        </div>
-        <span className="faint" style={{ fontSize: 12 }}>
-          Times shown in {tzLabel(timeZone)}. Pips measured from the middle of
-          the entry zone.
-        </span>
+        )}
       </div>
 
-      {outcome && outcome.status !== 'PENDING' && (
-        <div className="detail-section">
-          <span className="label">Outcome</span>
+      <details className="more">
+        <summary>
+          Technical details
+          <Icon name="chevron" size={15} />
+        </summary>
+        <div className="more-body">
+          {p.timeframeBias && p.timeframeBias.length > 0 && (
+            <div className="detail-section">
+              <span className="label">Timeframe votes</span>
+              <TimeframeVotes votes={p.timeframeBias} />
+            </div>
+          )}
           <div className="kv">
             <div>
-              <span>Result</span>
-              <strong>{OUTCOME_LABEL[outcome.status]}</strong>
+              <span>Published</span>
+              <strong>{dateTime(p.validFrom, timeZone)}</strong>
             </div>
             <div>
-              <span>Move</span>
-              <strong>{signedPips(outcome.movementPips)}p</strong>
+              <span>Window ends</span>
+              <strong>{dateTime(p.expiresAt, timeZone)}</strong>
             </div>
             <div>
-              <span>Settled at</span>
-              <strong>{price(p.pairCode, outcome.resolvedPrice)}</strong>
-            </div>
-            <div>
-              <span>Evaluated</span>
+              <span>Risk / reward</span>
               <strong>
-                {outcome.evaluatedAt
-                  ? dateTime(outcome.evaluatedAt, timeZone)
-                  : '—'}
+                {p.stopPips ?? '—'}p / {p.targetPips ?? '—'}p
               </strong>
             </div>
+            <div>
+              <span>H1 ATR</span>
+              <strong>{p.atrPips !== null ? `${p.atrPips}p` : '—'}</strong>
+            </div>
+            <div>
+              <span>Engine</span>
+              <strong>{engineLabel(p.engine)}</strong>
+            </div>
+            <div>
+              <span>Model</span>
+              <strong>{p.modelName ?? '—'}</strong>
+            </div>
+            {outcome && outcome.status !== 'PENDING' && (
+              <>
+                <div>
+                  <span>Result</span>
+                  <strong>{OUTCOME_LABEL[outcome.status]}</strong>
+                </div>
+                <div>
+                  <span>Settled at</span>
+                  <strong>{price(p.pairCode, outcome.resolvedPrice)}</strong>
+                </div>
+              </>
+            )}
           </div>
-          {outcome.note && (
+          {outcome?.note && outcome.status !== 'PENDING' && (
             <p className="faint" style={{ fontSize: 12.5 }}>
               {outcome.note}
             </p>
           )}
+          <span className="faint" style={{ fontSize: 12 }}>
+            Times in {tzLabel(timeZone)}. Pips are measured from the middle of
+            the entry zone.
+          </span>
         </div>
-      )}
+      </details>
 
       <p className="disclaimer">
         <Icon name="info" size={14} />
-        Algorithmic market context for research. Not a recommendation to buy or
-        sell, and not financial advice.
+        Market analysis for research and education, not a recommendation to buy
+        or sell.
       </p>
     </>
   );
@@ -217,12 +194,16 @@ export function SignalDrawer({
   prediction,
   last,
   onClose,
+  focus,
 }: {
   prediction: Prediction;
   last?: number | null;
   onClose: () => void;
+  /** Open straight at "My trade" (from the card's "Log trade"). */
+  focus?: 'trade';
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   // Parents re-render on timers; keep the latest handler without re-running
   // the mount effect (which would steal focus every tick).
   const onCloseRef = useRef(onClose);
@@ -231,6 +212,14 @@ export function SignalDrawer({
   useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null;
     closeRef.current?.focus();
+    if (focus === 'trade') {
+      // Let the chart and sizer lay out first, then jump to "My trade".
+      setTimeout(() => {
+        bodyRef.current
+          ?.querySelector('#my-trade')
+          ?.scrollIntoView({ block: 'start' });
+      }, 80);
+    }
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onCloseRef.current();
     };
@@ -261,7 +250,8 @@ export function SignalDrawer({
               <span className={`tag tag-${tone}`}>{callLabel(prediction)}</span>
             </h2>
             <span className="faint" style={{ fontSize: 12 }}>
-              {PAIR_NAMES[prediction.pairCode]} · {prediction.session} window
+              {PAIR_NAMES[prediction.pairCode]} · {prediction.session} window ·
+              trade plan
             </span>
           </div>
           <button
@@ -273,14 +263,13 @@ export function SignalDrawer({
             <Icon name="close" size={17} />
           </button>
         </div>
-        <div className="drawer-body">
-          <div className="detail-section">
-            <span className="label">Price action</span>
-            <div className="panel">
-              <SignalChart prediction={prediction} height={260} />
-            </div>
-          </div>
-          <SignalDetail prediction={prediction} last={last} />
+        <div className="drawer-body" ref={bodyRef}>
+          <SignalDetail
+            prediction={prediction}
+            last={last}
+            chart
+            focusTrade={focus === 'trade'}
+          />
         </div>
       </aside>
     </>

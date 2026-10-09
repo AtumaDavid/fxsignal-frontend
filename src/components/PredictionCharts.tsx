@@ -43,7 +43,7 @@ export function SignalChart({
       price: p.invalidationPrice,
       label: 'Stop',
       tone: 'down',
-      legend: 'Invalidation',
+      legend: 'Stop',
     },
   ];
   const expired = new Date(p.expiresAt).getTime() <= Date.now();

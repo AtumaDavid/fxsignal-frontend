@@ -52,7 +52,7 @@ export function OpenTrades() {
                 className="btn btn-ghost btn-sm"
                 onClick={() => setOpenId(t.id)}
               >
-                Details <Icon name="arrowRight" size={13} />
+                Open plan <Icon name="arrowRight" size={13} />
               </button>
             </div>
             {t.live && (

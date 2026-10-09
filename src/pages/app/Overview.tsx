@@ -9,6 +9,7 @@ import {
 } from '../../components/Market';
 import { SignalDrawer } from '../../components/SignalDrawer';
 import { OpenTrades } from '../../components/OpenTrades';
+import { GettingStarted } from '../../components/GettingStarted';
 import { SignalTicket, TicketSkeleton } from '../../components/SignalTicket';
 import { OutlookSummary } from './Outlook';
 import { Empty } from '../../components/ui/Empty';
@@ -38,6 +39,7 @@ export default function Overview() {
   const now = useNow(30_000);
   const perf = usePerformance(365);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [focusTrade, setFocusTrade] = useState(false);
 
   const open = data?.marketStatus === 'OPEN';
   const next = data ? new Date(data.stats.nextRefresh) : null;
@@ -76,6 +78,7 @@ export default function Overview() {
 
       <div className="stack">
         <FeedBanner />
+        <GettingStarted />
 
         <section className="kpis" aria-label="Track record">
           <div className="kpi">
@@ -138,7 +141,7 @@ export default function Overview() {
         <div className="section-title">
           <h2>{open || !data ? 'Current signals' : 'Week ahead'}</h2>
           <Link to={open || !data ? '/app/signals' : '/app/outlook'}>
-            {open || !data ? 'All signal detail' : 'Full outlook'}{' '}
+            {open || !data ? 'Charts & reasoning' : 'Full outlook'}{' '}
             <Icon name="arrowRight" size={13} />
           </Link>
         </div>
@@ -156,7 +159,14 @@ export default function Overview() {
                   key={prediction.id}
                   prediction={prediction}
                   last={lastPrice(data, prediction.pairCode)}
-                  onOpen={() => setOpenId(prediction.id)}
+                  onOpen={() => {
+                    setFocusTrade(false);
+                    setOpenId(prediction.id);
+                  }}
+                  onLogTrade={() => {
+                    setFocusTrade(true);
+                    setOpenId(prediction.id);
+                  }}
                 />
               ))}
             </div>
@@ -275,6 +285,7 @@ export default function Overview() {
           prediction={selected}
           last={lastPrice(data, selected.pairCode)}
           onClose={() => setOpenId(null)}
+          focus={focusTrade ? 'trade' : undefined}
         />
       )}
     </>

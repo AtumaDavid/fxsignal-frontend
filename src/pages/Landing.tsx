@@ -280,20 +280,20 @@ function Anatomy() {
   const examples = useExampleSignals();
   const notes = [
     [
-      'Direction and confidence',
-      'Long, short, or neutral when the timeframes disagree. Confidence is how strongly they agree, not a win probability.',
+      'A plain next step',
+      'Every card says what to do now — wait for the entry, hold, take profit, exit or skip — with the prices you need.',
     ],
     [
       'Levels on one line',
-      'Invalidation, entry zone and target, drawn in the trade’s direction with the last price marked, so you can see at a glance where price sits.',
+      'Stop, entry zone and target, drawn in the trade’s direction with the last price marked, so you can see at a glance where price sits.',
     ],
     [
-      'Risk in pips',
-      'Reward-to-risk, pips at risk and H1 ATR, measured from the middle of the entry zone.',
+      'Risk you can size',
+      'Reward-to-risk and pips to the stop, plus a calculator that turns your balance and risk % into a lot size.',
     ],
     [
-      'Timeframe votes',
-      'Daily and H4 (context), H1 (execution) and M15 (confirmation), each scored −100 to +100. When H1 fights the context, there is no trade.',
+      'Reasoning on demand',
+      'Open the plan for the chart, the timeframe votes (daily and H4 context, H1 execution, M15 confirmation) and why the call was made.',
     ],
   ];
   return (

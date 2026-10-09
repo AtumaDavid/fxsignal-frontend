@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { SignalDrawer } from '../../components/SignalDrawer';
 import { FeedBanner } from '../../components/Market';
 import { OpenTrades } from '../../components/OpenTrades';
 import { SignalDetail } from '../../components/SignalDrawer';
@@ -10,6 +12,9 @@ import { lastPrice } from './Overview';
 
 export default function Signals() {
   const { data, loading } = useDashboard();
+  // "Log trade" opens the plan straight at My trade.
+  const [logId, setLogId] = useState<string | null>(null);
+  const logging = data?.predictions.find((p) => p.id === logId) ?? null;
   const open = data?.marketStatus === 'OPEN';
 
   return (
@@ -66,13 +71,14 @@ export default function Signals() {
                 <SignalTicket
                   prediction={prediction}
                   last={lastPrice(data, prediction.pairCode)}
+                  onLogTrade={() => setLogId(prediction.id)}
                 />
                 <section className="panel">
                   <div className="panel-head">
-                    <h2>{prediction.pairCode} · reasoning</h2>
+                    <h2>{prediction.pairCode} · plan &amp; reasoning</h2>
                   </div>
                   <div className="panel-body stack" style={{ gap: 22 }}>
-                    <SignalDetail prediction={prediction} />
+                    <SignalDetail prediction={prediction} summary={false} />
                   </div>
                 </section>
               </div>
@@ -87,6 +93,14 @@ export default function Signals() {
           </div>
         )}
       </div>
+      {logging && (
+        <SignalDrawer
+          prediction={logging}
+          last={lastPrice(data, logging.pairCode)}
+          onClose={() => setLogId(null)}
+          focus="trade"
+        />
+      )}
     </>
   );
 }
