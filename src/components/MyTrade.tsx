@@ -1,3 +1,4 @@
+import { useTodayRisk } from './Guardrails';
 import { useState, type FormEvent } from 'react';
 import { Icon } from './Icon';
 import { Spinner } from './ui/Empty';
@@ -58,6 +59,7 @@ function TradeForm({
   onDone: () => void;
 }) {
   const { save } = useJournal();
+  const { risk, prefs: riskPrefs } = useTodayRisk();
   const neutral = prediction.direction === 'NEUTRAL';
   const [side, setSide] = useState<'LONG' | 'SHORT' | ''>(
     trade?.side ?? (neutral ? '' : (prediction.direction as 'LONG' | 'SHORT'))
@@ -153,6 +155,13 @@ function TradeForm({
           {planned.lots ? ', size from your calculator settings' : ''}. Change
           anything that differs from your actual fills.
         </p>
+      )}
+      {prefilled && risk && (risk.tradeLimitHit || risk.lossLimitHit) && (
+        <div className="alert alert-warning">
+          {risk.lossLimitHit
+            ? `Guardrail: you've lost ${risk.lossPct.toFixed(1)}% today, past your ${riskPrefs?.dailyLossPct}% limit. Consider stopping for today.`
+            : `Guardrail: this would be trade ${risk.tradesToday + 1} today; your limit is ${riskPrefs?.maxTradesPerDay}.`}
+        </div>
       )}
       {error && <div className="alert alert-error">{error}</div>}
       <div className="field">

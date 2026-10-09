@@ -4,6 +4,7 @@ import { Icon } from '../../components/Icon';
 import { OutcomeTag } from '../../components/Market';
 import { SignalDrawer } from '../../components/SignalDrawer';
 import { Empty } from '../../components/ui/Empty';
+import { GuardrailBanner, GuardrailHint } from '../../components/Guardrails';
 import {
   dayDate,
   callLabel,
@@ -154,6 +155,8 @@ export default function MyJournal() {
       </div>
 
       <div className="stack">
+        <GuardrailBanner />
+        <GuardrailHint />
         <section className="kpis">
           <div className="kpi">
             <span className="label" data-tip="Trades you saved with Log trade.">

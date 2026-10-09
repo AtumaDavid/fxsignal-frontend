@@ -4,6 +4,7 @@ import { Icon } from '../../components/Icon';
 import { Spinner } from '../../components/ui/Empty';
 import { PasswordInput } from '../../components/ui/PasswordInput';
 import { AlertSettings } from '../../components/AlertSettings';
+import { GuardrailSettings } from '../../components/Guardrails';
 import { authApi } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { dayDate, tzLabel } from '../../lib/format';
@@ -192,6 +193,19 @@ export default function Settings() {
             </p>
           </div>
           <AlertSettings />
+        </section>
+
+        <section className="settings-section" id="risk">
+          <div>
+            <h2>
+              Risk guardrails <span className="tag">Optional</span>
+            </h2>
+            <p>
+              A daily loss limit and a maximum number of trades per day. Off by
+              default; when on, FXSignal warns you when you reach them.
+            </p>
+          </div>
+          <GuardrailSettings />
         </section>
 
         <section className="settings-section">

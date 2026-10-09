@@ -17,6 +17,7 @@ import type {
   WeeklyOutlook,
   WeeklyRecap,
 } from './types';
+import type { RiskPrefs } from './guardrails';
 
 // VITE_API_URL wins when set. Otherwise production builds talk to the hosted
 // API and `npm run dev` talks to the local one.
@@ -275,6 +276,14 @@ export const notificationsApi = {
     }),
   test: () =>
     request<void>('/notifications/test', { method: 'POST', body: {} }),
+};
+
+// ---- Risk guardrails ------------------------------------------------------------
+
+export const riskApi = {
+  get: () => request<{ prefs: RiskPrefs }>('/risk'),
+  save: (prefs: RiskPrefs) =>
+    request<{ prefs: RiskPrefs }>('/risk', { method: 'PUT', body: prefs }),
 };
 
 // ---- Weekly recap -------------------------------------------------------------

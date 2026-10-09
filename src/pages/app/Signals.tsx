@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { SignalDrawer } from '../../components/SignalDrawer';
 import { FeedBanner } from '../../components/Market';
 import { OpenTrades } from '../../components/OpenTrades';
+import { GuardrailBanner } from '../../components/Guardrails';
 import { SignalDetail } from '../../components/SignalDrawer';
 import { SignalChart } from '../../components/Charts';
 import { SignalTicket, TicketSkeleton } from '../../components/SignalTicket';
@@ -71,6 +72,7 @@ export default function Signals() {
 
       <div className="stack">
         <FeedBanner />
+        <GuardrailBanner />
         <OpenTrades />
         {loading && !data ? (
           <div className="grid-2">

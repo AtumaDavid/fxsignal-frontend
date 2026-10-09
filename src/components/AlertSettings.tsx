@@ -47,7 +47,7 @@ const EVENTS: { key: AlertGroup; label: string; hint: string }[] = [
   },
 ];
 
-function Switch({
+export function Switch({
   checked,
   onChange,
   disabled,

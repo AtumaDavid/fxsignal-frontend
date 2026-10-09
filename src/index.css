@@ -578,6 +578,11 @@ button:disabled {
   background: var(--up-soft);
   color: var(--up-ink);
 }
+.alert-warning {
+  border-color: rgba(245, 180, 60, 0.35);
+  background: rgba(245, 180, 60, 0.08);
+  color: #f5c46a;
+}
 .alert-action {
   margin-left: auto;
   flex: none;
@@ -3937,5 +3942,72 @@ a[data-tip],
   .recap-days {
     gap: 4px;
     padding: 14px 12px;
+  }
+}
+
+/* ---- Risk guardrails ------------------------------------------------------- */
+.guardrail-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(245, 180, 60, 0.35);
+  background: rgba(245, 180, 60, 0.08);
+  color: #f5c46a;
+}
+.guardrail-banner.stop {
+  border-color: rgba(239, 68, 68, 0.45);
+  background: rgba(239, 68, 68, 0.1);
+  color: #fca5a5;
+}
+.guardrail-banner > svg {
+  flex-shrink: 0;
+}
+.guardrail-banner div {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.guardrail-banner strong {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.guardrail-banner span {
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.guardrail-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--line-strong);
+  color: var(--text-2);
+  font-size: 13px;
+}
+.guardrail-hint > svg {
+  flex-shrink: 0;
+}
+.guardrail-hint span {
+  flex: 1;
+}
+.guardrail-hint strong {
+  color: var(--text);
+  font-weight: 500;
+}
+.guardrail-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 560px) {
+  .guardrail-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .guardrail-hint {
+    flex-wrap: wrap;
   }
 }

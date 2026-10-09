@@ -4,7 +4,7 @@ import { Select } from './ui/Select';
 import { useDashboard } from '../lib/dashboard';
 import type { Prediction } from '../lib/types';
 
-type Currency = 'USD' | 'EUR' | 'JPY';
+export type Currency = 'USD' | 'EUR' | 'JPY';
 
 const CURRENCY_OPTIONS: { value: Currency; label: string; hint: string }[] = [
   { value: 'USD', label: 'USD', hint: 'US dollar' },
@@ -38,6 +38,35 @@ export function readSizerPrefs(): SizerPrefs {
 }
 
 /**
+ * Value of one pip on one standard lot (100,000 units), in the account
+ * currency:
+ *   EUR/USD → $10 (the quote currency is USD);
+ *   USD/JPY → ¥1,000 per pip ÷ USD/JPY.
+ * Converted with the two pairs FXSignal already prices (EUR via EUR/USD, JPY
+ * via USD/JPY). Null when a needed price is unknown.
+ */
+export function lotPipValue(
+  pair: Prediction['pairCode'],
+  currency: Currency,
+  priceOf: (pair: Prediction['pairCode']) => number | null
+): number | null {
+  const eurusd = priceOf('EUR/USD');
+  const usdjpy = priceOf('USD/JPY');
+  const pipValueUsd = pair === 'EUR/USD' ? 10 : usdjpy ? 1000 / usdjpy : null;
+  const toAccount =
+    currency === 'USD'
+      ? 1
+      : currency === 'EUR'
+        ? eurusd
+          ? 1 / eurusd
+          : null
+        : usdjpy;
+  return pipValueUsd !== null && toAccount !== null
+    ? pipValueUsd * toAccount
+    : null;
+}
+
+/**
  * Lot size for a signal from the saved balance / risk / currency.
  *
  * Pip value of one standard lot (100,000 units), in USD:
@@ -53,22 +82,11 @@ export function sizeFor(
   lastPrice: (pair: Prediction['pairCode']) => number | null
 ) {
   const mid = (prediction.entryLow + prediction.entryHigh) / 2;
-  const quote = (pair: Prediction['pairCode']) =>
-    pair === prediction.pairCode ? mid : lastPrice(pair);
-  const eurusd = quote('EUR/USD');
-  const usdjpy = quote('USD/JPY');
-  const pipValueUsd =
-    prediction.pairCode === 'EUR/USD' ? 10 : usdjpy ? 1000 / usdjpy : null;
-  const toAccount =
-    prefs.currency === 'USD'
-      ? 1
-      : prefs.currency === 'EUR'
-        ? eurusd
-          ? 1 / eurusd
-          : null
-        : usdjpy;
-  const pipValueLot =
-    pipValueUsd !== null && toAccount !== null ? pipValueUsd * toAccount : null;
+  const pipValueLot = lotPipValue(
+    prediction.pairCode,
+    prefs.currency,
+    (pair) => (pair === prediction.pairCode ? mid : lastPrice(pair))
+  );
 
   const balance = Number(prefs.balance);
   const riskPct = Number(prefs.riskPct);
@@ -88,7 +106,7 @@ export function sizeFor(
   return { valid, pipValueLot, riskAmount, lots, stopPips };
 }
 
-function money(value: number, currency: Currency) {
+export function money(value: number, currency: Currency) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,

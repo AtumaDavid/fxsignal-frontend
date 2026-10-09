@@ -11,6 +11,7 @@ import { SignalDrawer } from '../../components/SignalDrawer';
 import { OpenTrades } from '../../components/OpenTrades';
 import { GettingStarted } from '../../components/GettingStarted';
 import { AlertsBanner } from '../../components/AlertsBanner';
+import { GuardrailBanner } from '../../components/Guardrails';
 import { SignalTicket, TicketSkeleton } from '../../components/SignalTicket';
 import { OutlookSummary } from './Outlook';
 import { Empty } from '../../components/ui/Empty';
@@ -79,6 +80,7 @@ export default function Overview() {
 
       <div className="stack">
         <FeedBanner />
+        <GuardrailBanner />
         <AlertsBanner />
         <GettingStarted />
 
