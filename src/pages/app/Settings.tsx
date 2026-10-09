@@ -5,6 +5,7 @@ import { Spinner } from '../../components/ui/Empty';
 import { PasswordInput } from '../../components/ui/PasswordInput';
 import { AlertSettings } from '../../components/AlertSettings';
 import { GuardrailSettings } from '../../components/Guardrails';
+import { Mt5Sync } from '../../components/Mt5Sync';
 import { authApi } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { dayDate, tzLabel } from '../../lib/format';
@@ -193,6 +194,20 @@ export default function Settings() {
             </p>
           </div>
           <AlertSettings />
+        </section>
+
+        <section className="settings-section" id="mt5">
+          <div>
+            <h2>
+              MT5 sync <span className="tag">Read-only</span>
+            </h2>
+            <p>
+              Fill your journal automatically from MetaTrader 5 (Exness and any
+              other MT5 broker). FXSignal only reads your trades; it can never
+              place, change or close one.
+            </p>
+          </div>
+          <Mt5Sync />
         </section>
 
         <section className="settings-section" id="risk">

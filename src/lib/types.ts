@@ -256,9 +256,11 @@ export interface UserTrade {
   stopPrice: number | null;
   targetPrice: number | null;
   exitedAt: string | null;
-  /** 'stop' | 'target' when detected automatically, 'manual' when typed. */
+  /** 'stop' | 'target' when detected automatically, 'manual' when typed, 'mt5' from MetaTrader. */
   exitReason: string | null;
   notes: string | null;
+  /** 'mt5' when synced from MetaTrader. */
+  source?: string | null;
   /** Signed by the user's side; null until entry and exit are both set. */
   pips: number | null;
   createdAt: string;
@@ -543,4 +545,17 @@ export interface BacktestRunInfo {
   finishedAt: string | null;
   summary: { trades: number; netR: number; winRate: number | null } | null;
   error: string | null;
+}
+
+export interface Mt5Status {
+  linked: boolean;
+  link: {
+    tokenHint: string;
+    createdAt: string;
+    lastSyncAt: string | null;
+    lastAccount: string | null;
+    lastBroker: string | null;
+    lastPositions: number | null;
+    lastMatched: number | null;
+  } | null;
 }

@@ -16,6 +16,8 @@ interface JournalContextValue {
   tradeFor: (predictionId: string) => UserTrade | null;
   save: (predictionId: string, input: TradeInput) => Promise<void>;
   remove: (predictionId: string) => Promise<void>;
+  /** Re-read from the server (e.g. after an MT5 sync). */
+  reload: () => Promise<void>;
 }
 
 const JournalContext = createContext<JournalContextValue | undefined>(
@@ -45,6 +47,17 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     return () => controller.abort();
   }, [load]);
 
+  // Trades can arrive from MT5 sync at any time: refresh when the tab returns.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void load();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [load]);
+
+  const reload = useCallback(() => load(), [load]);
+
   const save = useCallback(
     async (predictionId: string, input: TradeInput) => {
       await journalApi.save(predictionId, input);
@@ -69,8 +82,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ data, error, tradeFor, save, remove }),
-    [data, error, tradeFor, save, remove]
+    () => ({ data, error, tradeFor, save, remove, reload }),
+    [data, error, tradeFor, save, remove, reload]
   );
   return (
     <JournalContext.Provider value={value}>{children}</JournalContext.Provider>

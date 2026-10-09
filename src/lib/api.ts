@@ -20,6 +20,7 @@ import type {
   AdminUser,
   BacktestReport,
   BacktestRunInfo,
+  Mt5Status,
 } from './types';
 import type { RiskPrefs } from './guardrails';
 
@@ -314,6 +315,15 @@ export const adminApi = {
       method: 'PATCH',
       body: { plan },
     }),
+};
+
+// ---- MT5 sync -------------------------------------------------------------------
+
+export const mt5Api = {
+  status: (signal?: AbortSignal) => request<Mt5Status>('/mt5', { signal }),
+  createKey: () =>
+    request<{ key: string }>('/mt5/key', { method: 'POST', body: {} }),
+  unlink: () => request<void>('/mt5', { method: 'DELETE' }),
 };
 
 // ---- Weekly recap -------------------------------------------------------------

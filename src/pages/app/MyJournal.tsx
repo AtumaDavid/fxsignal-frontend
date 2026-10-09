@@ -322,7 +322,18 @@ export default function MyJournal() {
                             {callLabel(p)}
                           </span>
                         </td>
-                        <td>{t.side === 'LONG' ? 'Long' : 'Short'}</td>
+                        <td>
+                          {t.side === 'LONG' ? 'Long' : 'Short'}
+                          {t.source === 'mt5' && (
+                            <span
+                              className="tag"
+                              style={{ marginLeft: 6 }}
+                              data-tip="Synced from MetaTrader 5: your real fills and lot size."
+                            >
+                              MT5
+                            </span>
+                          )}
+                        </td>
                         <td className="r num">
                           {price(p.pairCode, t.entryPrice)} →{' '}
                           {t.exitPrice !== null
