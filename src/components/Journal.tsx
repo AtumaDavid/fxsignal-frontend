@@ -48,6 +48,7 @@ const RESULT_OPTIONS: SelectOption<'' | OutcomeStatus>[] = [
   { value: 'HIT', label: 'Target' },
   { value: 'MISSED', label: 'Stopped' },
   { value: 'CLOSED_EARLY', label: 'Closed early' },
+  { value: 'BREAKEVEN', label: 'Breakeven' },
   { value: 'CANCELLED', label: 'Cancelled' },
   { value: 'EXPIRED', label: 'Expired' },
   { value: 'PENDING', label: 'Open' },

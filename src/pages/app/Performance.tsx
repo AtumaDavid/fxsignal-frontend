@@ -145,7 +145,7 @@ export default function Performance() {
             <div className="kpi-value">{totals?.signals ?? '—'}</div>
             <span className="kpi-note">
               {totals
-                ? `${totals.closedEarly} closed early · ${totals.cancelled} cancelled · ${totals.neutral} neutral · ${totals.notTriggered} not triggered · ${totals.pending} open`
+                ? `${totals.breakeven ?? 0} breakeven · ${totals.closedEarly} closed early · ${totals.cancelled} cancelled · ${totals.neutral} neutral · ${totals.notTriggered} not triggered · ${totals.pending} open`
                 : '—'}
             </span>
           </div>

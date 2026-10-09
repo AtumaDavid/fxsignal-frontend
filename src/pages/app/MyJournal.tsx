@@ -15,10 +15,105 @@ import {
 } from '../../lib/format';
 import { useJournal } from '../../lib/journal';
 import { usePrefs } from '../../lib/prefs';
+import type { JournalBreakdown } from '../../lib/types';
 
 function pipClass(value: number | null | undefined) {
   if (value === null || value === undefined) return 'faint';
   return value > 0 ? 'up' : value < 0 ? 'down' : '';
+}
+
+/**
+ * One group of the user's closed trades (a pair or a session): net pips as a
+ * bar that grows left (losing) or right (winning) from the middle, scaled to
+ * the biggest group so they compare at a glance.
+ */
+function EdgeTable({
+  title,
+  hint,
+  rows,
+}: {
+  title: string;
+  hint: string;
+  rows: JournalBreakdown[];
+}) {
+  const scale = Math.max(1, ...rows.map((r) => Math.abs(r.netPips)));
+  return (
+    <section className="panel">
+      <div className="panel-head">
+        <div>
+          <h2 data-tip={hint}>{title}</h2>
+        </div>
+      </div>
+      <div className="edge-list">
+        {rows.map((row) => {
+          const width = (Math.abs(row.netPips) / scale) * 50;
+          return (
+            <div className="edge-row" key={row.key}>
+              <div className="edge-name">
+                <strong>{row.key}</strong>
+                <span className="faint num">
+                  {row.trades} {row.trades === 1 ? 'trade' : 'trades'} ·{' '}
+                  {row.winRate === null
+                    ? '—'
+                    : `${row.winRate.toFixed(0)}% won`}
+                </span>
+              </div>
+              <div className="edge-bar" aria-hidden="true">
+                <span className="edge-bar-mid" />
+                <span
+                  className={`edge-bar-fill ${row.netPips >= 0 ? 'up' : 'down'}`}
+                  style={
+                    row.netPips >= 0
+                      ? { left: '50%', width: `${width}%` }
+                      : { right: '50%', width: `${width}%` }
+                  }
+                />
+              </div>
+              <div className="edge-nums">
+                <strong className={`num ${pipClass(row.netPips)}`}>
+                  {signedPips(row.netPips)}
+                </strong>
+                <span
+                  className="faint num"
+                  data-tip="Average pips per closed trade."
+                >
+                  {signedPips(row.avgPips)} avg
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+/** "London is your best session" style read-out, once there is enough data. */
+function edgeInsight(
+  bySession: JournalBreakdown[],
+  byPair: JournalBreakdown[]
+) {
+  const ranked = (rows: JournalBreakdown[]) =>
+    rows.filter((r) => r.trades >= 2);
+  const sessions = ranked(bySession);
+  const pairs = ranked(byPair);
+  const parts: string[] = [];
+  if (sessions.length >= 2) {
+    const best = sessions[0];
+    const worst = sessions[sessions.length - 1];
+    parts.push(
+      `Your best session is ${best.key} (${signedPips(best.netPips)} over ${best.trades} trades)` +
+        (worst.netPips < 0
+          ? `; ${worst.key} is costing you (${signedPips(worst.netPips)}).`
+          : '.')
+    );
+  }
+  if (pairs.length >= 2 && pairs[0].netPips !== pairs[1].netPips) {
+    parts.push(
+      `${pairs[0].key} has worked better for you than ${pairs[pairs.length - 1].key}.`
+    );
+  }
+  return parts.join(' ');
 }
 
 export default function MyJournal() {
@@ -118,11 +213,35 @@ export default function MyJournal() {
             </div>
             <span className="kpi-note">
               {data
-                ? `${engineCount('HIT')} targets · ${engineCount('MISSED')} stops · ${engineCount('CLOSED_EARLY')} closed early · ${engineCount('PENDING')} open`
+                ? `${engineCount('HIT')} targets · ${engineCount('MISSED')} stops · ${engineCount('BREAKEVEN')} breakeven · ${engineCount('CLOSED_EARLY')} closed early · ${engineCount('PENDING')} open`
                 : '—'}
             </span>
           </div>
         </section>
+
+        {data && data.summary.closed > 0 && (
+          <>
+            <div className="edge-head">
+              <h2>Where you trade best</h2>
+              <p>
+                {edgeInsight(data.bySession ?? [], data.byPair ?? []) ||
+                  'Closed trades grouped by session and pair. A clearer picture builds after a few trades in each.'}
+              </p>
+            </div>
+            <div className="grid-2">
+              <EdgeTable
+                title="By session"
+                hint="The session the signal was published in (Asia, London, New York)."
+                rows={data.bySession ?? []}
+              />
+              <EdgeTable
+                title="By pair"
+                hint="Your closed trades on each pair."
+                rows={data.byPair ?? []}
+              />
+            </div>
+          </>
+        )}
 
         <section className="panel">
           <div className="panel-head">

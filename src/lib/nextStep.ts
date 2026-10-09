@@ -19,6 +19,15 @@ export function nextStep(p: Prediction, now = Date.now()): NextStep {
   const pair = p.pairCode;
   const stop = price(pair, p.invalidationPrice);
   const target = price(pair, p.targetPrice);
+  const tp2 = p.target2Price ? price(pair, p.target2Price) : null;
+  const entry = price(pair, (p.entryLow + p.entryHigh) / 2);
+  const beAt = price(
+    pair,
+    (p.entryLow + p.entryHigh) / 2 +
+      ((p.entryLow + p.entryHigh) / 2 - p.invalidationPrice)
+  );
+  /** "target X" or "TP1 X (half), TP2 Y". */
+  const targets = tp2 ? `TP1 ${target} (half), TP2 ${tp2}` : `target ${target}`;
   const zone = `${price(pair, p.entryLow)}–${price(pair, p.entryHigh)}`;
   const long = p.direction === 'LONG';
   const o = p.outcome;
@@ -43,7 +52,15 @@ export function nextStep(p: Prediction, now = Date.now()): NextStep {
     return {
       tone: 'done',
       title: 'Done — target hit',
-      detail: `Closed at ${target} (${signedPips(o.movementPips)}p).`,
+      detail: tp2
+        ? `${o.note ?? 'Closed in profit.'} Result ${signedPips(o.movementPips)}p for the whole position.`
+        : `Closed at ${target} (${signedPips(o.movementPips)}p).`,
+    };
+  if (o?.status === 'BREAKEVEN')
+    return {
+      tone: 'done',
+      title: 'Done — closed at entry',
+      detail: `Reached +1R, the stop moved to ${entry}, then price came back. 0p — no loss.`,
     };
   if (o?.status === 'MISSED')
     return {
@@ -68,7 +85,7 @@ export function nextStep(p: Prediction, now = Date.now()): NextStep {
     return {
       tone: 'hold',
       title: 'Keep your earlier trade open',
-      detail: `No new entry this window. Stop ${stop}, target ${target}.`,
+      detail: `No new entry this window. Stop ${stop}, ${targets}.`,
     };
   if (p.direction === 'NEUTRAL')
     return {
@@ -83,18 +100,29 @@ export function nextStep(p: Prediction, now = Date.now()): NextStep {
       ? {
           tone: 'hold',
           title: 'Still valid — let it run',
-          detail: `The ${p.carried.window} analysis agrees with this trade, so there is no new signal. Stop ${stop}, target ${target}${live.pips !== null ? `, now ${signedPips(live.pips)}p` : ''}.`,
+          detail: `The ${p.carried.window} analysis agrees with this trade, so there is no new signal. Stop ${live.breakevenAt ? `${entry} (entry)` : stop}, ${targets}${live.pips !== null ? `, now ${signedPips(live.pips)}p` : ''}.`,
         }
       : {
           tone: 'wait',
           title: 'Manage on its own levels',
-          detail: `The ${p.carried.window} analysis is neutral now. Keep the stop at ${stop} and the target at ${target}${live.pips !== null ? ` (now ${signedPips(live.pips)}p)` : ''}; no new entry.`,
+          detail: `The ${p.carried.window} analysis is neutral now. Keep the stop at ${live.breakevenAt ? `${entry} (entry)` : stop} and ${targets}${live.pips !== null ? ` (now ${signedPips(live.pips)}p)` : ''}; no new entry.`,
         };
   if (live?.state === 'target')
     return {
       tone: 'done',
-      title: 'Target reached',
-      detail: `Hit ${target} (${signedPips(live.pips)}p). Take profit if you are in.`,
+      title:
+        tp2 && !live.tp2Hit
+          ? 'TP1 banked — rest closed at entry'
+          : 'Target reached',
+      detail: tp2
+        ? `${live.tp2Hit ? `Hit TP2 ${tp2}` : `Half booked at ${target}, the rest came back to ${entry}`} (${signedPips(live.pips)}p in total).`
+        : `Hit ${target} (${signedPips(live.pips)}p). Take profit if you are in.`,
+    };
+  if (live?.state === 'breakeven')
+    return {
+      tone: 'done',
+      title: 'Closed at entry',
+      detail: `Reached +1R, then came back to ${entry}. 0p — no loss.`,
     };
   if (live?.state === 'stopped')
     return {
@@ -102,11 +130,25 @@ export function nextStep(p: Prediction, now = Date.now()): NextStep {
       title: 'Stopped out',
       detail: `Hit ${stop} (${signedPips(live.pips)}p).`,
     };
+  if (live?.state === 'running' && tp2 && live.tp1At)
+    return {
+      tone: 'hold',
+      title: 'TP1 hit — half off, let the rest run',
+      detail: `Take half off at ${target} if you haven't. Keep the stop at ${entry} (entry); the rest runs to TP2 ${tp2}${live.pips !== null ? `, now ${signedPips(live.pips)}p` : ''}.`,
+    };
+  if (live?.state === 'running' && tp2 && live.breakevenAt)
+    return {
+      tone: 'act',
+      title: 'Move your stop to entry',
+      detail: `Price reached +1R (${beAt}). Move the stop to ${entry} so this trade can no longer lose. Then half off at TP1 ${target}, the rest to TP2 ${tp2}.`,
+    };
   if (live?.state === 'running')
     return {
       tone: 'hold',
       title: 'In the trade — let it run',
-      detail: `Stop ${stop}, target ${target}${live.pips !== null ? `, now ${signedPips(live.pips)}p` : ''}. You'll get an alert when it closes.`,
+      detail: tp2
+        ? `Stop ${stop}. At ${beAt} (+1R) move the stop to entry; half off at TP1 ${target}, the rest at TP2 ${tp2}${live.pips !== null ? `. Now ${signedPips(live.pips)}p` : ''}.`
+        : `Stop ${stop}, target ${target}${live.pips !== null ? `, now ${signedPips(live.pips)}p` : ''}. You'll get an alert when it closes.`,
     };
 
   if (new Date(p.expiresAt).getTime() <= now)
@@ -119,6 +161,6 @@ export function nextStep(p: Prediction, now = Date.now()): NextStep {
   return {
     tone: 'act',
     title: `Wait to ${long ? 'buy' : 'sell'} in the zone`,
-    detail: `When price reaches ${zone}, wait for a 15-minute candle to close ${long ? 'up' : 'down'}, then ${long ? 'buy' : 'sell'}. Stop ${stop}, target ${target}.`,
+    detail: `When price reaches ${zone}, wait for a 15-minute candle to close ${long ? 'up' : 'down'}, then ${long ? 'buy' : 'sell'}. Stop ${stop}, ${targets}${tp2 ? `; stop to entry at ${beAt} (+1R)` : ''}.`,
   };
 }

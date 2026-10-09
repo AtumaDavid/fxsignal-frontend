@@ -27,6 +27,14 @@ export function engineExit(
 ): { price: number; label: string } | null {
   const o = p.outcome;
   if (!o || o.resolvedPrice === null) return null;
+  const mid = (p.entryLow + p.entryHigh) / 2;
+  if (o.status === 'BREAKEVEN') return { price: mid, label: 'breakeven' };
+  // TP1/TP2 books half at each step: log the average exit of the position.
+  if (o.status === 'HIT' && p.target2Price && o.movementPips !== null) {
+    const pip = p.pairCode === 'EUR/USD' ? 0.0001 : 0.01;
+    const sign = p.direction === 'SHORT' ? -1 : 1;
+    return { price: mid + sign * o.movementPips * pip, label: 'average exit' };
+  }
   if (o.status === 'HIT') return { price: o.resolvedPrice, label: 'target' };
   if (o.status === 'MISSED') return { price: o.resolvedPrice, label: 'stop' };
   if (o.status === 'CLOSED_EARLY')

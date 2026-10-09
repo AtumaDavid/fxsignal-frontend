@@ -117,9 +117,17 @@ export function PositionSizer({ prediction }: { prediction: Prediction }) {
     lots !== null && pipValueLot && stopPips
       ? lots * stopPips * pipValueLot
       : null;
+  // With TP1/TP2, half comes off at each: the reward if both trade.
+  const pipSize = prediction.pairCode === 'EUR/USD' ? 0.0001 : 0.01;
+  const mid = (prediction.entryLow + prediction.entryHigh) / 2;
+  const rewardPips = prediction.target2Price
+    ? ((prediction.targetPips ?? 0) +
+        Math.abs(prediction.target2Price - mid) / pipSize) /
+      2
+    : prediction.targetPips;
   const reward =
-    lots !== null && pipValueLot && prediction.targetPips
-      ? lots * prediction.targetPips * pipValueLot
+    lots !== null && pipValueLot && rewardPips
+      ? lots * rewardPips * pipValueLot
       : null;
 
   const set = (patch: Partial<SizerPrefs>) =>
@@ -208,7 +216,17 @@ export function PositionSizer({ prediction }: { prediction: Prediction }) {
               </strong>
             </div>
             <div>
-              <span>Reward at target</span>
+              <span
+                data-tip={
+                  prediction.target2Price
+                    ? 'Half closed at TP1 and half at TP2.'
+                    : undefined
+                }
+              >
+                {prediction.target2Price
+                  ? 'Reward at TP1 + TP2'
+                  : 'Reward at target'}
+              </span>
               <strong className="up">
                 {reward !== null && lots ? money(reward, prefs.currency) : '—'}
               </strong>

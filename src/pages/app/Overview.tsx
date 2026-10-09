@@ -134,7 +134,7 @@ export default function Overview() {
             </div>
             <span className="kpi-note">
               {totals
-                ? `${totals.closedEarly} closed early · ${totals.cancelled} cancelled · ${totals.neutral} neutral`
+                ? `${totals.breakeven ?? 0} breakeven · ${totals.closedEarly} closed early · ${totals.cancelled} cancelled · ${totals.neutral} neutral`
                 : 'In the history window'}
             </span>
           </div>

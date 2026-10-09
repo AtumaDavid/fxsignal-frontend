@@ -112,6 +112,14 @@ export default function Methodology() {
               can never cost reward.
             </li>
             <li>
+              Two targets: <strong>TP1</strong> is that 2R target and{' '}
+              <strong>TP2</strong> sits one more R beyond it (3R). Once price
+              reaches <strong>+1R</strong>, the stop moves to the entry, so a
+              trade that has gone your way cannot turn into a loss. Half the
+              position comes off at TP1, the rest runs to TP2 with the stop at
+              entry.
+            </li>
+            <li>
               If the structural stop would be wider than 60 pips, 1:2 cannot fit
               inside one window, so the engine stands aside instead of
               publishing a worse ratio.
@@ -197,6 +205,14 @@ export default function Methodology() {
               invalidation is assumed first.
             </li>
             <li>
+              The stop moves to the entry from the candle after +1R trades
+              (inside one candle the order of high and low is unknown). Results
+              for the whole position: <strong>−1R</strong> at the stop,{' '}
+              <strong>0</strong> at breakeven, <strong>+1R</strong> when TP1 is
+              booked and the rest returns to entry, <strong>+2.5R</strong> when
+              both targets trade.
+            </li>
+            <li>
               A trade that filled is followed after its window closes, even when
               newer signals are published, until its target or invalidation
               trades. Anything still open at the Friday close is closed there at
@@ -204,12 +220,12 @@ export default function Methodology() {
               gap.
             </li>
             <li>
-              If a new window points the same way while that trade is still
-              open, it is published as a <strong>Hold</strong>: no second entry,
-              manage the open trade. Holds are not scored separately, so one
-              move is never counted twice. A new call in the opposite direction
-              is published with a warning to close or reduce the open trade
-              first.
+              If a new window points the same way (or is neutral) while that
+              trade is still open, nothing new is published: the open trade
+              stays the pair's signal, marked <strong>Still valid</strong>, so
+              one move is never counted twice. A new call in the opposite
+              direction is published with a warning to close or reduce the open
+              trade first.
             </li>
             <li>Neutral calls are stand-asides and are never scored.</li>
             <li>
@@ -219,9 +235,10 @@ export default function Methodology() {
             </li>
           </ol>
           <p>
-            The hit rate counts only targets and invalidations; early exits are
-            in net pips but not the hit rate; cancelled signals and neutral
-            calls are not scored. Pips are signed in the trade's direction.
+            The hit rate counts only targets and invalidations; breakevens and
+            early exits are in net pips but not the hit rate; cancelled signals
+            and neutral calls are not scored. Pips are signed in the trade's
+            direction.
           </p>
         </section>
 

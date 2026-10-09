@@ -45,7 +45,11 @@ export function PriceLadder({
   const rising =
     p.direction === 'LONG' ||
     (p.direction === 'NEUTRAL' && p.targetPrice >= mid);
-  const points = [p.invalidationPrice, p.entryLow, p.entryHigh, p.targetPrice];
+  const tp2 = p.target2Price ?? null;
+  // +1R: where the stop moves to entry on managed (TP1/TP2) trades.
+  const beAt = tp2 !== null ? mid + (mid - p.invalidationPrice) : null;
+  const finalTarget = tp2 ?? p.targetPrice;
+  const points = [p.invalidationPrice, p.entryLow, p.entryHigh, finalTarget];
   if (last !== null && last !== undefined) points.push(last);
   const lo = Math.min(...points);
   const hi = Math.max(...points);
@@ -67,11 +71,11 @@ export function PriceLadder({
   const pipsFromMid = (value: number) => Math.abs(value - mid) / pipSize;
 
   return (
-    <div className="ladder">
+    <div className={`ladder${tp2 !== null ? ' ladder-4' : ''}`}>
       <div
         className="ladder-track"
         role="img"
-        aria-label={`Invalidation ${price(p.pairCode, p.invalidationPrice)}, entry ${price(p.pairCode, p.entryLow)} to ${price(p.pairCode, p.entryHigh)}, target ${price(p.pairCode, p.targetPrice)}`}
+        aria-label={`Invalidation ${price(p.pairCode, p.invalidationPrice)}, entry ${price(p.pairCode, p.entryLow)} to ${price(p.pairCode, p.entryHigh)}, ${tp2 !== null ? `TP1 ${price(p.pairCode, p.targetPrice)}, TP2 ${price(p.pairCode, tp2)}` : `target ${price(p.pairCode, p.targetPrice)}`}`}
       >
         <span className="ladder-rail" />
         <span
@@ -80,7 +84,7 @@ export function PriceLadder({
         />
         <span
           className="ladder-seg reward"
-          style={span(farEdge, p.targetPrice)}
+          style={span(farEdge, finalTarget)}
         />
         <span className="ladder-zone" style={span(p.entryLow, p.entryHigh)} />
         <span
@@ -90,7 +94,22 @@ export function PriceLadder({
         <span
           className="ladder-tick target"
           style={{ left: `${pos(p.targetPrice)}%` }}
+          data-tip={tp2 !== null ? 'TP1: take half off here.' : undefined}
         />
+        {tp2 !== null && (
+          <span
+            className="ladder-tick target tp2"
+            style={{ left: `${pos(tp2)}%` }}
+            data-tip="TP2: the rest of the position closes here."
+          />
+        )}
+        {beAt !== null && p.direction !== 'NEUTRAL' && (
+          <span
+            className="ladder-tick be"
+            style={{ left: `${pos(beAt)}%` }}
+            data-tip={`+1R (${price(p.pairCode, beAt)}): once price trades here, move the stop to your entry.`}
+          />
+        )}
         {last !== null && last !== undefined && (
           <span
             className="ladder-now"
@@ -119,13 +138,32 @@ export function PriceLadder({
           </strong>
           <em>{((p.entryHigh - p.entryLow) / pipSize).toFixed(1)}p wide</em>
         </div>
-        <div>
-          <span data-tip="Take profit. Always at least twice the distance to the stop (2R), measured from the middle of the zone.">
-            Target
-          </span>
-          <strong>{price(p.pairCode, p.targetPrice)}</strong>
-          <em>+{pipsFromMid(p.targetPrice).toFixed(1)}p</em>
-        </div>
+        {tp2 !== null ? (
+          <>
+            <div>
+              <span data-tip="First target, at least 2R. Take half off here; the stop is already at entry by then.">
+                TP1 · half
+              </span>
+              <strong>{price(p.pairCode, p.targetPrice)}</strong>
+              <em>+{pipsFromMid(p.targetPrice).toFixed(1)}p</em>
+            </div>
+            <div>
+              <span data-tip="Second target, one more R beyond TP1. The other half closes here, or at entry if price comes back first.">
+                TP2 · rest
+              </span>
+              <strong>{price(p.pairCode, tp2)}</strong>
+              <em>+{pipsFromMid(tp2).toFixed(1)}p</em>
+            </div>
+          </>
+        ) : (
+          <div>
+            <span data-tip="Take profit. Always at least twice the distance to the stop (2R), measured from the middle of the zone.">
+              Target
+            </span>
+            <strong>{price(p.pairCode, p.targetPrice)}</strong>
+            <em>+{pipsFromMid(p.targetPrice).toFixed(1)}p</em>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -212,18 +250,35 @@ export function LiveStatus({
         : `Price ${price(p.pairCode, last)} · ${distance.toFixed(1)}p from the zone`;
   } else if (live.state === 'running') {
     tone = (live.pips ?? 0) > 0 ? 'up' : (live.pips ?? 0) < 0 ? 'down' : '';
+    const stage = live.tp1At
+      ? 'TP1 hit, half booked · stop at entry'
+      : live.breakevenAt
+        ? 'Stop moved to entry'
+        : null;
     headline = `Running ${live.pips !== null ? signedPips(live.pips) : ''}`;
-    detail = `Entry triggered ${live.filledAt ? time(live.filledAt, timeZone) : ''}${
-      live.progress !== null
-        ? live.progress >= 0
-          ? ` · ${live.progress}% of the way to target`
-          : ` · ${Math.abs(live.progress)}% of the way to the stop`
-        : ''
-    }`;
+    detail = stage
+      ? `${stage}${live.progress !== null && live.progress >= 0 ? ` · ${live.progress}% of the way to ${p.target2Price ? 'TP2' : 'target'}` : ''}`
+      : `Entry triggered ${live.filledAt ? time(live.filledAt, timeZone) : ''}${
+          live.progress !== null
+            ? live.progress >= 0
+              ? ` · ${live.progress}% of the way to ${p.target2Price ? 'TP2' : 'target'}`
+              : ` · ${Math.abs(live.progress)}% of the way to the stop`
+            : ''
+        }`;
+  } else if (live.state === 'breakeven') {
+    tone = 'flat';
+    headline = 'Closed at entry · 0p';
+    detail = `${live.closedAt ? time(live.closedAt, timeZone) : ''} · reached +1R, then came back to the entry — no loss`;
   } else {
     const hit = live.state === 'target';
     tone = hit ? 'up' : 'down';
-    headline = hit ? 'Target reached' : 'Invalidated';
+    headline = !hit
+      ? 'Invalidated'
+      : !p.target2Price
+        ? 'Target reached'
+        : live.tp2Hit
+          ? 'TP2 reached'
+          : 'TP1 hit · rest closed at entry';
     detail = `${live.closedAt ? time(live.closedAt, timeZone) : ''} · ${
       live.pips !== null ? signedPips(live.pips) : ''
     } · final result is recorded when the window closes`;
@@ -261,7 +316,7 @@ export function LiveStatus({
             }
           />
           <em className="live-bar-l">Stop</em>
-          <em className="live-bar-r">Target</em>
+          <em className="live-bar-r">{p.target2Price ? 'TP2' : 'Target'}</em>
         </div>
       )}
     </div>

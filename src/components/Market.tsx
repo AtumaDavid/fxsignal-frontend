@@ -244,7 +244,9 @@ export function EventRow({
 }
 
 const OUTCOME_TIP: Record<OutcomeStatus, string> = {
-  HIT: 'The target traded before the stop.',
+  HIT: 'A win: the target traded before the stop (with TP1/TP2: TP1 at least, half booked there).',
+  BREAKEVEN:
+    'Reached +1R, the stop moved to entry, then price came back: closed for 0. Not a win or a loss.',
   MISSED: 'The stop traded before the target.',
   CLOSED_EARLY:
     'Exited on an H1 close with strong evidence against the trade. Counted in net pips, not the hit rate.',
@@ -259,6 +261,7 @@ const OUTCOME = {
   HIT: { label: 'Target', cls: 'tag-up' },
   MISSED: { label: 'Stopped', cls: 'tag-down' },
   CLOSED_EARLY: { label: 'Closed early', cls: 'tag-flat' },
+  BREAKEVEN: { label: 'Breakeven', cls: 'tag-flat' },
   CANCELLED: { label: 'Cancelled', cls: '' },
   EXPIRED: { label: 'Expired', cls: '' },
   PENDING: { label: 'Open', cls: 'tag-solid' },

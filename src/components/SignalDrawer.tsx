@@ -27,6 +27,7 @@ const OUTCOME_LABEL = {
   HIT: 'Target hit',
   MISSED: 'Invalidated',
   CLOSED_EARLY: 'Closed early',
+  BREAKEVEN: 'Closed at breakeven',
   CANCELLED: 'Cancelled before entry',
   EXPIRED: 'Expired',
   PENDING: 'Open',

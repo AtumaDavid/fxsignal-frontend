@@ -5,6 +5,7 @@ const RESULT_LABEL = {
   HIT: 'Target hit',
   MISSED: 'Stopped',
   CLOSED_EARLY: 'Closed early',
+  BREAKEVEN: 'Breakeven',
   CANCELLED: 'Cancelled',
   EXPIRED: 'Expired',
   PENDING: 'Expired',
@@ -24,7 +25,14 @@ export function SignalChart({
 }) {
   const p = prediction;
   const levels: ChartLevel[] = [
-    { price: p.targetPrice, label: 'Target', tone: 'up' },
+    ...(p.target2Price
+      ? ([
+          { price: p.target2Price, label: 'TP2', tone: 'up' },
+          { price: p.targetPrice, label: 'TP1', tone: 'up', style: 'dashed' },
+        ] as ChartLevel[])
+      : ([
+          { price: p.targetPrice, label: 'Target', tone: 'up' },
+        ] as ChartLevel[])),
     {
       price: p.entryHigh,
       label: 'Entry',

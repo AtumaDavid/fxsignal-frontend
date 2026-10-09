@@ -10,6 +10,9 @@ const POLL_MS = 60_000;
 const TONE: Record<string, string> = {
   TARGET_HIT: 'dot-up',
   STOP_HIT: 'dot-down',
+  BREAKEVEN_HIT: 'dot-flat',
+  BREAKEVEN_SET: 'dot-live',
+  TP1_HIT: 'dot-up',
   CLOSED_EARLY: 'dot-flat',
   CANCELLED: 'dot-flat',
   ENTRY_FILLED: 'dot-live',

@@ -9,7 +9,9 @@ export type OutcomeStatus =
   /** Withdrawn before entry on an H1 close (never a trade). */
   | 'CANCELLED'
   /** Exited early on strong H1 evidence (in net pips, not the hit rate). */
-  | 'CLOSED_EARLY';
+  | 'CLOSED_EARLY'
+  /** +1R reached, stop moved to entry, closed there for 0 (not in the hit rate). */
+  | 'BREAKEVEN';
 export type OutcomeSource = 'DEMO' | 'LIVE';
 export type PredictionEngine = 'RULE_BASED' | 'DEEPSEEK';
 
@@ -43,14 +45,24 @@ export interface TimeframeVote {
 }
 
 export interface LiveProgress {
-  state: 'neutral' | 'waiting' | 'running' | 'target' | 'stopped';
+  /** target: won (TP2, or TP1 then the rest at entry) · breakeven: closed at entry for 0. */
+  state: 'neutral' | 'waiting' | 'running' | 'target' | 'stopped' | 'breakeven';
   filledAt: string | null;
   closedAt: string | null;
+  /** Whole position, blending the half booked at TP1 with the rest. */
   pips: number | null;
-  /** −100 (at the stop) … +100 (at the target). */
+  /** −100 (at the stop) … +100 (at the final target). */
   progress: number | null;
   lastPrice: number | null;
   asOf: string | null;
+  /** When +1R traded and the stop moved to entry. */
+  breakevenAt?: string | null;
+  /** When TP1 traded and half was booked. */
+  tp1At?: string | null;
+  /** The runner reached TP2. */
+  tp2Hit?: boolean;
+  /** Where the stop is now (the entry once breakeven is on). */
+  stopNow?: number | null;
 }
 
 export interface Prediction {
@@ -63,7 +75,10 @@ export interface Prediction {
   confidence: number;
   entryLow: number;
   entryHigh: number;
+  /** TP1: half off here (the scored target on older signals). */
   targetPrice: number;
+  /** TP2: the runner. Null on older single-target signals. */
+  target2Price?: number | null;
   invalidationPrice: number;
   rationale: string;
   factors: string[];
@@ -210,6 +225,7 @@ export interface PerformanceSummary {
     neutral: number;
     closedEarly: number;
     cancelled: number;
+    breakeven?: number;
   };
   byPair: PerformanceBucket[];
   bySession: PerformanceBucket[];
@@ -252,6 +268,19 @@ export interface JournalData {
     engineNetPips: number;
     engineScored: number;
   };
+  /** Closed trades grouped, best net pips first. */
+  byPair?: JournalBreakdown[];
+  bySession?: JournalBreakdown[];
+}
+
+export interface JournalBreakdown {
+  key: string;
+  trades: number;
+  wins: number;
+  losses: number;
+  winRate: number | null;
+  netPips: number;
+  avgPips: number;
 }
 
 export interface PublicCall {
@@ -265,6 +294,7 @@ export interface PublicCall {
   entryLow: number;
   entryHigh: number;
   targetPrice: number;
+  target2Price?: number | null;
   invalidationPrice: number;
   status: OutcomeStatus;
   movementPips: number | null;
