@@ -2,17 +2,21 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from './Icon';
 import { notificationsApi } from '../lib/api';
+import { useDashboard } from '../lib/dashboard';
 import { relative, useNow } from '../lib/format';
 import type { AppNotification } from '../lib/types';
 
-const POLL_MS = 60_000;
+const POLL_MS = 30_000;
+/** How long an in-app alert stays on screen. */
+const TOAST_MS = 9_000;
 
 const TONE: Record<string, string> = {
   TARGET_HIT: 'dot-up',
   STOP_HIT: 'dot-down',
-  BREAKEVEN_HIT: 'dot-flat',
-  BREAKEVEN_SET: 'dot-live',
   TP1_HIT: 'dot-up',
+  TP2_HIT: 'dot-up',
+  TP3_HIT: 'dot-up',
+  TRAIL_STOP_HIT: 'dot-up',
   CLOSED_EARLY: 'dot-flat',
   CANCELLED: 'dot-flat',
   ENTRY_FILLED: 'dot-live',
@@ -26,16 +30,42 @@ export function NotificationsBell() {
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
+  const { reload } = useDashboard();
+  // In-app pop-ups for alerts that arrive while the app is open.
+  const [toasts, setToasts] = useState<AppNotification[]>([]);
+  const seen = useRef<Set<string> | null>(null);
+
+  const dismiss = useCallback((id: string) => {
+    setToasts((list) => list.filter((t) => t.id !== id));
+  }, []);
 
   const load = useCallback(async () => {
     try {
       const data = await notificationsApi.list();
       setItems(data.items);
       setUnread(data.unread);
+      // First load: everything is old news. Later: pop up what is new.
+      if (seen.current === null) {
+        seen.current = new Set(data.items.map((n) => n.id));
+        return;
+      }
+      const fresh = data.items.filter(
+        (n) => !n.read && !seen.current!.has(n.id)
+      );
+      data.items.forEach((n) => seen.current!.add(n.id));
+      if (fresh.length === 0) return;
+      setToasts((list) =>
+        [...fresh.slice(0, 3).reverse(), ...list].slice(0, 3)
+      );
+      fresh
+        .slice(0, 3)
+        .forEach((n) => setTimeout(() => dismiss(n.id), TOAST_MS));
+      // The signal cards should show the same news straight away.
+      void reload();
     } catch {
       // The bell is best-effort; the next poll retries.
     }
-  }, []);
+  }, [dismiss, reload]);
 
   useEffect(() => {
     void load();
@@ -71,8 +101,41 @@ export function NotificationsBell() {
     }
   }
 
+  const openFrom = (n: AppNotification) =>
+    navigate(n.kind === 'MY_TRADE_CLOSED' ? '/app/journal' : '/app/signals');
+
   return (
     <div className="bell" ref={wrap}>
+      {toasts.length > 0 && (
+        <div className="toast-stack" role="status" aria-live="polite">
+          {toasts.map((n) => (
+            <div key={n.id} className="toast">
+              <button
+                type="button"
+                className="toast-main"
+                onClick={() => {
+                  dismiss(n.id);
+                  openFrom(n);
+                }}
+              >
+                <span className={`dot ${TONE[n.kind] ?? ''}`} />
+                <span className="bell-copy">
+                  <strong>{n.title}</strong>
+                  <span>{n.body}</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                className="icon-btn toast-close"
+                aria-label="Dismiss"
+                onClick={() => dismiss(n.id)}
+              >
+                <Icon name="close" size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       <button
         className="icon-btn"
         onClick={() => void toggle()}
@@ -112,11 +175,7 @@ export function NotificationsBell() {
                     className={`bell-item${n.read ? '' : ' unread'}`}
                     onClick={() => {
                       setOpen(false);
-                      navigate(
-                        n.kind === 'MY_TRADE_CLOSED'
-                          ? '/app/journal'
-                          : '/app/signals'
-                      );
+                      openFrom(n);
                     }}
                   >
                     <span className={`dot ${TONE[n.kind] ?? ''}`} />

@@ -29,8 +29,8 @@ export function engineExit(
   if (!o || o.resolvedPrice === null) return null;
   const mid = (p.entryLow + p.entryHigh) / 2;
   if (o.status === 'BREAKEVEN') return { price: mid, label: 'breakeven' };
-  // TP1/TP2 books half at each step: log the average exit of the position.
-  if (o.status === 'HIT' && p.target2Price && o.movementPips !== null) {
+  // Three targets book a third at each step: log the average exit.
+  if (o.status === 'HIT' && p.target3Price && o.movementPips !== null) {
     const pip = p.pairCode === 'EUR/USD' ? 0.0001 : 0.01;
     const sign = p.direction === 'SHORT' ? -1 : 1;
     return { price: mid + sign * o.movementPips * pip, label: 'average exit' };

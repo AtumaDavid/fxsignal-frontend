@@ -1,3 +1,4 @@
+import { tradeTargets } from '../lib/targets';
 import { useEffect, useState } from 'react';
 import { Select } from './ui/Select';
 import { useDashboard } from '../lib/dashboard';
@@ -117,13 +118,15 @@ export function PositionSizer({ prediction }: { prediction: Prediction }) {
     lots !== null && pipValueLot && stopPips
       ? lots * stopPips * pipValueLot
       : null;
-  // With TP1/TP2, half comes off at each: the reward if both trade.
+  // With three targets a third comes off at each: the reward if all trade.
   const pipSize = prediction.pairCode === 'EUR/USD' ? 0.0001 : 0.01;
   const mid = (prediction.entryLow + prediction.entryHigh) / 2;
-  const rewardPips = prediction.target2Price
-    ? ((prediction.targetPips ?? 0) +
-        Math.abs(prediction.target2Price - mid) / pipSize) /
-      2
+  const tps = tradeTargets(prediction);
+  const rewardPips = tps
+    ? [tps.tp1, tps.tp2, tps.tp3].reduce(
+        (sum, level) => sum + Math.abs(level - mid) / pipSize / 3,
+        0
+      )
     : prediction.targetPips;
   const reward =
     lots !== null && pipValueLot && rewardPips
@@ -218,14 +221,12 @@ export function PositionSizer({ prediction }: { prediction: Prediction }) {
             <div>
               <span
                 data-tip={
-                  prediction.target2Price
-                    ? 'Half closed at TP1 and half at TP2.'
+                  tps
+                    ? 'A third closed at each of TP1, TP2 and TP3.'
                     : undefined
                 }
               >
-                {prediction.target2Price
-                  ? 'Reward at TP1 + TP2'
-                  : 'Reward at target'}
+                {tps ? 'Reward if all 3 TPs hit' : 'Reward at target'}
               </span>
               <strong className="up">
                 {reward !== null && lots ? money(reward, prefs.currency) : '—'}

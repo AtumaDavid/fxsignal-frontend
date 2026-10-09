@@ -1,4 +1,5 @@
 import { PriceChart, type ChartEvent, type ChartLevel } from './PriceChart';
+import { tradeTargets } from '../lib/targets';
 import type { Prediction, WeeklyOutlook } from '../lib/types';
 
 const RESULT_LABEL = {
@@ -24,11 +25,13 @@ export function SignalChart({
   height?: number;
 }) {
   const p = prediction;
+  const tps = tradeTargets(p);
   const levels: ChartLevel[] = [
-    ...(p.target2Price
+    ...(tps
       ? ([
-          { price: p.target2Price, label: 'TP2', tone: 'up' },
-          { price: p.targetPrice, label: 'TP1', tone: 'up', style: 'dashed' },
+          { price: tps.tp3, label: 'TP3', tone: 'up' },
+          { price: tps.tp2, label: 'TP2', tone: 'up', style: 'dashed' },
+          { price: tps.tp1, label: 'TP1', tone: 'up', style: 'dashed' },
         ] as ChartLevel[])
       : ([
           { price: p.targetPrice, label: 'Target', tone: 'up' },

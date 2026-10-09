@@ -45,23 +45,21 @@ export interface TimeframeVote {
 }
 
 export interface LiveProgress {
-  /** target: won (TP2, or TP1 then the rest at entry) · breakeven: closed at entry for 0. */
-  state: 'neutral' | 'waiting' | 'running' | 'target' | 'stopped' | 'breakeven';
+  /** target: closed in profit (TP3, or the trailed stop after TP1/TP2). */
+  state: 'neutral' | 'waiting' | 'running' | 'target' | 'stopped';
   filledAt: string | null;
   closedAt: string | null;
-  /** Whole position, blending the half booked at TP1 with the rest. */
+  /** Whole position, blending the thirds already booked at TP1/TP2. */
   pips: number | null;
   /** −100 (at the stop) … +100 (at the final target). */
   progress: number | null;
   lastPrice: number | null;
   asOf: string | null;
-  /** When +1R traded and the stop moved to entry. */
-  breakevenAt?: string | null;
-  /** When TP1 traded and half was booked. */
+  /** Targets reached so far (0–3). */
+  tpHits?: number;
   tp1At?: string | null;
-  /** The runner reached TP2. */
-  tp2Hit?: boolean;
-  /** Where the stop is now (the entry once breakeven is on). */
+  tp2At?: string | null;
+  /** Where the stop is now: original → entry after TP1 → TP1 after TP2. */
   stopNow?: number | null;
 }
 
@@ -75,10 +73,11 @@ export interface Prediction {
   confidence: number;
   entryLow: number;
   entryHigh: number;
-  /** TP1: half off here (the scored target on older signals). */
+  /** TP2 with three targets; the single target on older signals. */
   targetPrice: number;
-  /** TP2: the runner. Null on older single-target signals. */
-  target2Price?: number | null;
+  /** TP1 (+1R) and TP3 (+1R beyond TP2). Null on older single-target signals. */
+  target1Price?: number | null;
+  target3Price?: number | null;
   invalidationPrice: number;
   rationale: string;
   factors: string[];
@@ -294,7 +293,8 @@ export interface PublicCall {
   entryLow: number;
   entryHigh: number;
   targetPrice: number;
-  target2Price?: number | null;
+  target1Price?: number | null;
+  target3Price?: number | null;
   invalidationPrice: number;
   status: OutcomeStatus;
   movementPips: number | null;

@@ -112,12 +112,12 @@ export default function Methodology() {
               can never cost reward.
             </li>
             <li>
-              Two targets: <strong>TP1</strong> is that 2R target and{' '}
-              <strong>TP2</strong> sits one more R beyond it (3R). Once price
-              reaches <strong>+1R</strong>, the stop moves to the entry, so a
-              trade that has gone your way cannot turn into a loss. Half the
-              position comes off at TP1, the rest runs to TP2 with the stop at
-              entry.
+              Three targets, a third of the position at each:{' '}
+              <strong>TP1</strong> at 1R, <strong>TP2</strong> at the 2R target
+              and <strong>TP3</strong> one more R beyond it (3R). At TP1 the
+              stop moves to the entry, so the trade can no longer lose; at TP2
+              it moves to TP1, locking in profit. If all three trade, the whole
+              position makes 2R.
             </li>
             <li>
               If the structural stop would be wider than 60 pips, 1:2 cannot fit
@@ -205,12 +205,12 @@ export default function Methodology() {
               invalidation is assumed first.
             </li>
             <li>
-              The stop moves to the entry from the candle after +1R trades
-              (inside one candle the order of high and low is unknown). Results
-              for the whole position: <strong>−1R</strong> at the stop,{' '}
-              <strong>0</strong> at breakeven, <strong>+1R</strong> when TP1 is
-              booked and the rest returns to entry, <strong>+2.5R</strong> when
-              both targets trade.
+              A moved stop applies from the candle after the target that moved
+              it (inside one candle the order of high and low is unknown).
+              Results for the whole position: <strong>−1R</strong> at the stop,{' '}
+              <strong>+⅓R</strong> when TP1 is booked and the rest returns to
+              entry, <strong>+1⅓R</strong> after TP2 with the last third closed
+              at TP1, <strong>+2R</strong> when all three targets trade.
             </li>
             <li>
               A trade that filled is followed after its window closes, even when
