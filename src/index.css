@@ -1402,7 +1402,8 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 20px;
+  /* Full-screen drawers sit under the iPhone status bar in standalone mode. */
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 20px 14px;
   border-bottom: 1px solid var(--line);
 }
 .drawer-head h2 {
@@ -1415,7 +1416,7 @@ button:disabled {
 }
 .drawer-body {
   overflow-y: auto;
-  padding: 20px;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px));
   display: grid;
   gap: 22px;
   align-content: start;
