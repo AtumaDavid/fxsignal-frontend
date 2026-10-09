@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Icon } from './Icon';
 import {
   LiveStatus,
+  NewsWarning,
   NextStepBox,
   PriceLadder,
   TimeframeVotes,
@@ -70,6 +71,7 @@ export function SignalDetail({
       {summary && (
         <div className="detail-section">
           <NextStepBox prediction={p} />
+          <NewsWarning prediction={p} />
           {showProgress && (
             <div className="live-flush">
               <LiveStatus prediction={p} live={p.live!} />

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Icon } from './Icon';
 import { SignalDrawer } from './SignalDrawer';
-import { LiveStatus, PriceLadder } from './SignalTicket';
+import { LiveStatus, NewsWarning, PriceLadder } from './SignalTicket';
 import { useDashboard } from '../lib/dashboard';
 import {
   callLabel,
@@ -58,6 +58,11 @@ export function OpenTrades() {
             {t.live && (
               <div className="live-flush">
                 <LiveStatus prediction={t} live={t.live} />
+              </div>
+            )}
+            {(t.news?.length ?? 0) > 0 && (
+              <div className="live-flush">
+                <NewsWarning prediction={t} />
               </div>
             )}
             <PriceLadder prediction={t} last={t.live?.lastPrice ?? null} />

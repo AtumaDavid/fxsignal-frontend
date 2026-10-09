@@ -382,6 +382,56 @@ const STEP_ICON: Record<StepTone, IconName> = {
   exit: 'info',
 };
 
+/**
+ * High-impact news for the pair inside the signal's window: wait for it
+ * before entering, or protect an open trade.
+ */
+export function NewsWarning({ prediction }: { prediction: Prediction }) {
+  const { timeZone } = usePrefs();
+  const now = useNow(30_000);
+  const news = prediction.news ?? [];
+  if (news.length === 0) return null;
+  const first = news[0];
+  const at = new Date(first.at).getTime();
+  const minutes = Math.round((at - now) / 60_000);
+  const filled =
+    prediction.live?.state === 'running' || Boolean(prediction.carried);
+  const when =
+    minutes < -1
+      ? `was released ${Math.abs(minutes)} min ago`
+      : minutes <= 1
+        ? 'is out now'
+        : `at ${time(first.at, timeZone)} ${tzLabel(timeZone)} (in ${minutes < 90 ? `${minutes} min` : `${Math.round(minutes / 60)}h`})`;
+  const advice =
+    minutes < -1
+      ? 'Expect fast, choppy moves for a few minutes.'
+      : filled
+        ? 'Consider closing a part or tightening your stop before it.'
+        : 'Consider waiting until it is out before entering.';
+  const others = news.slice(1);
+  return (
+    <div
+      className="news-warning"
+      role="note"
+      data-tip="High-impact releases can move price 20–50+ pips in seconds and jump through stops."
+    >
+      <Icon name="info" size={14} />
+      <div>
+        <strong>
+          High-impact {first.currency} news {when}
+        </strong>
+        <span>
+          {first.title}. {advice}
+          {others.length > 0 &&
+            ` Also: ${others
+              .map((n) => `${n.currency} ${n.title} ${time(n.at, timeZone)}`)
+              .join(', ')}.`}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 /** The one thing to do with this signal right now. Leads every card. */
 export function NextStepBox({ prediction }: { prediction: Prediction }) {
   const now = useNow(30_000);
@@ -474,6 +524,7 @@ export function SignalTicket({
 
       <div className="ticket-body">
         <NextStepBox prediction={p} />
+        {!finished && <NewsWarning prediction={p} />}
         {showProgress && !finished && (
           <LiveStatus prediction={p} live={p.live!} />
         )}

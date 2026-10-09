@@ -63,6 +63,13 @@ export interface LiveProgress {
   stopNow?: number | null;
 }
 
+export interface NewsRisk {
+  title: string;
+  currency: string;
+  at: string;
+  impact: Impact;
+}
+
 export interface Prediction {
   id: string;
   pairCode: PairCode;
@@ -93,6 +100,8 @@ export interface Prediction {
   createdAt: string;
   outcome: PredictionOutcome | null;
   live?: LiveProgress | null;
+  /** High-impact releases for the pair's currencies around this signal. */
+  news?: NewsRisk[];
   /** "Hold" call: id of the still-open earlier signal this window manages. */
   continuesId?: string | null;
   /**
