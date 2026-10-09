@@ -24,6 +24,35 @@ import {
 import { usePrefs } from '../lib/prefs';
 import type { Prediction } from '../lib/types';
 
+const DRAWER_HISTORY_KEY = '__fxsignalDrawer';
+
+type DrawerHistoryState = {
+  [DRAWER_HISTORY_KEY]?: boolean;
+  [key: string]: unknown;
+};
+
+function isDrawerHistoryState(state: unknown): state is DrawerHistoryState {
+  return Boolean(
+    state &&
+      typeof state === 'object' &&
+      (state as DrawerHistoryState)[DRAWER_HISTORY_KEY]
+  );
+}
+
+/** Add a same-URL history step so iPhone back-swipe can close the drawer. */
+export function openDrawerHistory() {
+  if (isDrawerHistoryState(window.history.state)) return;
+  const state =
+    window.history.state && typeof window.history.state === 'object'
+      ? window.history.state
+      : {};
+  window.history.pushState(
+    { ...state, [DRAWER_HISTORY_KEY]: true },
+    '',
+    window.location.href
+  );
+}
+
 const OUTCOME_LABEL = {
   HIT: 'Target hit',
   MISSED: 'Invalidated',
@@ -256,13 +285,25 @@ export function SignalDrawer({
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const ownsHistoryEntry = useRef(false);
+  const closingWithHistory = useRef(false);
   // Parents re-render on timers; keep the latest handler without re-running
   // the mount effect (which would steal focus every tick).
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
+  function closeDrawer() {
+    if (ownsHistoryEntry.current) {
+      closingWithHistory.current = true;
+      window.history.back();
+      return;
+    }
+    onCloseRef.current();
+  }
+
   useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null;
+    ownsHistoryEntry.current = isDrawerHistoryState(window.history.state);
     closeRef.current?.focus();
     if (focus === 'trade') {
       // Let the chart and sizer lay out first, then jump to "My trade".
@@ -273,13 +314,21 @@ export function SignalDrawer({
       }, 80);
     }
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onCloseRef.current();
+      if (event.key === 'Escape') closeDrawer();
+    };
+    const onPopState = () => {
+      if (!ownsHistoryEntry.current && !closingWithHistory.current) return;
+      ownsHistoryEntry.current = false;
+      closingWithHistory.current = false;
+      onCloseRef.current();
     };
     document.addEventListener('keydown', onKey);
+    window.addEventListener('popstate', onPopState);
     const { overflow } = document.body.style;
     document.body.style.overflow = 'hidden';
     return () => {
       document.removeEventListener('keydown', onKey);
+      window.removeEventListener('popstate', onPopState);
       document.body.style.overflow = overflow;
       previouslyFocused?.focus?.();
     };
@@ -288,7 +337,7 @@ export function SignalDrawer({
   const tone = directionTone(prediction.direction);
   return (
     <>
-      <div className="drawer-backdrop" onClick={onClose} />
+      <div className="drawer-backdrop" onClick={closeDrawer} />
       <aside
         className="drawer"
         role="dialog"
@@ -309,10 +358,10 @@ export function SignalDrawer({
           <button
             ref={closeRef}
             className="btn btn-secondary drawer-close"
-            onClick={onClose}
-            aria-label="Close trade plan"
+            onClick={closeDrawer}
+            aria-label="Back to previous page"
           >
-            <Icon name="close" size={15} /> Close
+            <Icon name="arrowLeft" size={15} /> Back
           </button>
         </div>
         <div className="drawer-body" ref={bodyRef}>

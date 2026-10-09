@@ -1,6 +1,6 @@
 import { useState, type KeyboardEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { SignalDrawer } from '../../components/SignalDrawer';
+import { openDrawerHistory, SignalDrawer } from '../../components/SignalDrawer';
 import { FeedBanner } from '../../components/Market';
 import { OpenTrades } from '../../components/OpenTrades';
 import { GuardrailBanner } from '../../components/Guardrails';
@@ -149,7 +149,10 @@ export default function Signals() {
                 <SignalTicket
                   prediction={selected}
                   last={lastPrice(data, selected.pairCode)}
-                  onLogTrade={() => setLogId(selected.id)}
+                  onLogTrade={() => {
+                    openDrawerHistory();
+                    setLogId(selected.id);
+                  }}
                 />
               </div>
               <div className="signal-main stack">

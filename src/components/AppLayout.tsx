@@ -284,7 +284,7 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
         onClick={onMenu}
         aria-label="Open menu"
       >
-        <Icon name="menu" size={18} />
+        <Icon name="menu" size={22} />
       </button>
       <span className="topbar-title">
         {TITLES[location.pathname] ?? 'FXSignal'}

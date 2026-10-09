@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Icon } from './Icon';
-import { SignalDrawer } from './SignalDrawer';
+import { openDrawerHistory, SignalDrawer } from './SignalDrawer';
 import { LiveStatus, NewsWarning, PriceLadder } from './SignalTicket';
 import { useDashboard } from '../lib/dashboard';
 import {
@@ -50,7 +50,10 @@ export function OpenTrades() {
               </span>
               <button
                 className="btn btn-ghost btn-sm"
-                onClick={() => setOpenId(t.id)}
+                onClick={() => {
+                  openDrawerHistory();
+                  setOpenId(t.id);
+                }}
               >
                 Open plan <Icon name="arrowRight" size={13} />
               </button>

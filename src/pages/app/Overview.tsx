@@ -7,7 +7,7 @@ import {
   OutcomeTag,
   SessionMap,
 } from '../../components/Market';
-import { SignalDrawer } from '../../components/SignalDrawer';
+import { openDrawerHistory, SignalDrawer } from '../../components/SignalDrawer';
 import { OpenTrades } from '../../components/OpenTrades';
 import { GettingStarted } from '../../components/GettingStarted';
 import { AlertsBanner } from '../../components/AlertsBanner';
@@ -182,10 +182,12 @@ export default function Overview() {
                   prediction={prediction}
                   last={lastPrice(data, prediction.pairCode)}
                   onOpen={() => {
+                    openDrawerHistory();
                     setFocusTrade(false);
                     setOpenId(prediction.id);
                   }}
                   onLogTrade={() => {
+                    openDrawerHistory();
                     setFocusTrade(true);
                     setOpenId(prediction.id);
                   }}
