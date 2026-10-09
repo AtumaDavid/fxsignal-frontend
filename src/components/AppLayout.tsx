@@ -69,6 +69,12 @@ const MARKET_NAV: NavItem[] = [
     icon: 'book',
     tip: 'The trades you took, your results, and how they compare with the engine.',
   },
+  {
+    to: '/app/notifications',
+    label: 'Notifications',
+    icon: 'bell',
+    tip: 'Every alert, kept for 30 days. Delete single ones or clear read/all.',
+  },
 ];
 
 const ACCOUNT_NAV: NavItem[] = [
@@ -100,7 +106,8 @@ const TITLES: Record<string, string> = {
   '/app/performance': 'Performance',
   '/app/journal': 'My journal',
   '/app/recap': 'Weekly recap',
-  '/app/admin': 'Admin',
+  '/app/notifications': 'Notifications',
+  '/admin': 'Admin',
   '/app/billing': 'Plan & billing',
   '/app/settings': 'Settings',
   '/app/methodology': 'Methodology',
@@ -173,10 +180,10 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
           {ACCOUNT_NAV.map(renderItem)}
           {user?.isAdmin &&
             renderItem({
-              to: '/app/admin',
+              to: '/admin',
               label: 'Admin',
               icon: 'shield',
-              tip: 'Users, data credits, alert delivery and server health.',
+              tip: 'Owner console on a separate surface: users, credits, alerts, health.',
             })}
         </nav>
 

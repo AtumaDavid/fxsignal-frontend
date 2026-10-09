@@ -18,6 +18,8 @@ import type {
   WeeklyRecap,
   AdminOverview,
   AdminUser,
+  AdminUserDetail,
+  AdminSignal,
   BacktestReport,
   BacktestRunInfo,
   Mt5Status,
@@ -241,6 +243,8 @@ export interface TradeInput {
   stopPrice?: number | null;
   targetPrice?: number | null;
   notes?: string | null;
+  /** 'breakeven' closes at the entry (0 pips). Omitted = auto-detect. */
+  exitReason?: 'manual' | 'breakeven' | null;
 }
 
 export const journalApi = {
@@ -261,8 +265,15 @@ export const notificationsApi = {
     request<{ unread: number; items: AppNotification[] }>('/notifications', {
       signal,
     }),
-  markRead: () =>
-    request<void>('/notifications/read', { method: 'POST', body: {} }),
+  markRead: (ids?: string[]) =>
+    request<void>('/notifications/read', {
+      method: 'POST',
+      body: ids ? { ids: ids.map(Number) } : {},
+    }),
+  remove: (id: string) =>
+    request<void>(`/notifications/${id}`, { method: 'DELETE' }),
+  clear: (mode: 'read' | 'all') =>
+    request<void>('/notifications', { method: 'DELETE', body: { mode } }),
   settings: () => request<AlertSettings>('/notifications/settings'),
   saveSettings: (prefs: AlertPrefs) =>
     request<{ prefs: AlertPrefs }>('/notifications/settings', {
@@ -296,11 +307,41 @@ export const riskApi = {
 export const adminApi = {
   overview: (signal?: AbortSignal) =>
     request<AdminOverview>('/admin/overview', { signal }),
-  users: (q = '', signal?: AbortSignal) =>
+  users: (q = '', plan = 'ALL', signal?: AbortSignal) =>
     request<{ users: AdminUser[] }>(
-      `/admin/users${q ? `?q=${encodeURIComponent(q)}` : ''}`,
+      `/admin/users?${new URLSearchParams({
+        ...(q ? { q } : {}),
+        ...(plan !== 'ALL' ? { plan } : {}),
+      }).toString()}`,
       { signal }
     ),
+  userDetail: (id: number, signal?: AbortSignal) =>
+    request<AdminUserDetail>(`/admin/users/${id}`, { signal }),
+  deleteUser: (id: number) =>
+    request<void>(`/admin/users/${id}`, { method: 'DELETE' }),
+  broadcast: (title: string, body: string, audience: 'ALL' | 'FREE' | 'PRO') =>
+    request<{ sent: number; audience: string }>('/admin/broadcast', {
+      method: 'POST',
+      body: { title, body, audience },
+    }),
+  runMaintenance: () =>
+    request<{ jobs: AdminOverview['jobs'] }>('/admin/maintenance', {
+      method: 'POST',
+      body: {},
+    }),
+  runCandleLoop: () =>
+    request<{ jobs: AdminOverview['jobs'] }>('/admin/candle-loop', {
+      method: 'POST',
+      body: {},
+    }),
+  signals: (take = 20, signal?: AbortSignal) =>
+    request<{ signals: AdminSignal[] }>(`/admin/signals?take=${take}`, {
+      signal,
+    }),
+  clearFailures: () =>
+    request<{ cleared: number }>('/admin/alert-failures', {
+      method: 'DELETE',
+    }),
   backtests: (signal?: AbortSignal) =>
     request<{ running: boolean; runs: BacktestRunInfo[] }>('/admin/backtest', {
       signal,

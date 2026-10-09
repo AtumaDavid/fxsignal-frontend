@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
 import { OutcomeTag } from '../../components/Market';
 import { SignalDrawer } from '../../components/SignalDrawer';
@@ -16,11 +16,31 @@ import {
 } from '../../lib/format';
 import { useJournal } from '../../lib/journal';
 import { usePrefs } from '../../lib/prefs';
-import type { JournalBreakdown } from '../../lib/types';
+import type { JournalBreakdown, UserTrade } from '../../lib/types';
 
 function pipClass(value: number | null | undefined) {
   if (value === null || value === undefined) return 'faint';
   return value > 0 ? 'up' : value < 0 ? 'down' : '';
+}
+
+/** How a journal trade closed, for tracing win / loss / scratch. */
+function closeLabel(t: UserTrade) {
+  if (t.exitPrice === null) {
+    if (
+      t.entryPrice !== null &&
+      t.stopPrice !== null &&
+      Math.abs(t.stopPrice - t.entryPrice) < t.entryPrice * 1e-9
+    )
+      return 'BE protected';
+    return t.stopPrice !== null || t.targetPrice !== null
+      ? 'Watching'
+      : 'Open';
+  }
+  if (t.exitReason === 'target') return 'Target (auto)';
+  if (t.exitReason === 'stop') return 'Stop (auto)';
+  if (t.exitReason === 'breakeven') return 'Breakeven';
+  if (t.exitReason === 'mt5' || t.source === 'mt5') return 'MT5';
+  return 'Manual';
 }
 
 /**
@@ -120,7 +140,14 @@ function edgeInsight(
 export default function MyJournal() {
   const { data, error } = useJournal();
   const { timeZone } = usePrefs();
+  const [params] = useSearchParams();
   const [openId, setOpenId] = useState<string | null>(null);
+  // Deep link from an alert (?trade=<predictionId>): open that trade's drawer
+  // once the journal has loaded, so a breakeven alert lands on the trade.
+  useEffect(() => {
+    const id = params.get('trade');
+    if (id && data?.trades.some((t) => t.predictionId === id)) setOpenId(id);
+  }, [params, data]);
   const summary = data?.summary;
   // How the engine's own trades ended on the signals you took.
   const engineCount = (status: string) =>
@@ -188,7 +215,7 @@ export default function MyJournal() {
             </div>
             <span className="kpi-note">
               {summary
-                ? `${summary.wins} wins · ${summary.losses} losses`
+                ? `${summary.wins} wins · ${summary.losses} losses · ${summary.breakevens ?? 0} breakeven`
                 : '—'}
             </span>
           </div>
@@ -291,6 +318,7 @@ export default function MyJournal() {
                     <th className="r">Entry → exit</th>
                     <th className="r">Lots</th>
                     <th className="r">Your pips</th>
+                    <th>Close</th>
                     <th>Engine result</th>
                     <th className="r">Engine pips</th>
                     <th>Notes</th>
@@ -342,7 +370,23 @@ export default function MyJournal() {
                         </td>
                         <td className="r num">{t.lots ?? '—'}</td>
                         <td className={`r num ${pipClass(t.pips)}`}>
-                          {t.pips === null ? '—' : signedPips(t.pips)}
+                          {t.pips === null
+                            ? '—'
+                            : t.exitReason === 'breakeven'
+                              ? 'BE'
+                              : signedPips(t.pips)}
+                        </td>
+                        <td>
+                          <span
+                            className="faint"
+                            data-tip={
+                              t.exitReason === 'breakeven'
+                                ? 'Scratched at entry: no gain, no loss.'
+                                : undefined
+                            }
+                          >
+                            {closeLabel(t)}
+                          </span>
                         </td>
                         <td>
                           <OutcomeTag status={p.outcome?.status ?? 'PENDING'} />
@@ -369,7 +413,8 @@ export default function MyJournal() {
           <div className="footnote">
             <Icon name="info" size={13} />
             Your pips are measured from your own entry to exit. Engine pips are
-            from the middle of the entry zone. Times in {tzLabel(timeZone)}.
+            from the middle of the entry zone. Breakeven scratches (BE) are
+            kept out of wins and losses. Times in {tzLabel(timeZone)}.
           </div>
         </section>
       </div>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Icon } from './Icon';
 import { notificationsApi } from '../lib/api';
 import { useDashboard } from '../lib/dashboard';
+import { useJournal } from '../lib/journal';
 import { relative, useNow } from '../lib/format';
 import type { AppNotification } from '../lib/types';
 
@@ -31,6 +32,7 @@ export function NotificationsBell() {
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
   const { reload } = useDashboard();
+  const { tradeFor } = useJournal();
   // In-app pop-ups for alerts that arrive while the app is open.
   const [toasts, setToasts] = useState<AppNotification[]>([]);
   const seen = useRef<Set<string> | null>(null);
@@ -101,8 +103,23 @@ export function NotificationsBell() {
     }
   }
 
-  const openFrom = (n: AppNotification) =>
-    navigate(n.kind === 'MY_TRADE_CLOSED' ? '/app/journal' : '/app/signals');
+  // Alerts are connected to the journal: anything about a signal you hold
+  // (TP1/trailing-stop management, fills, closes — and always your own
+  // journal closes) lands on that journal trade with its drawer open, so a
+  // breakeven takes one tap. Everything else opens the signals.
+  const openFrom = (n: AppNotification) => {
+    const held =
+      n.predictionId !== null &&
+      (() => {
+        const t = tradeFor(n.predictionId);
+        return t !== null && (n.kind === 'MY_TRADE_CLOSED' || t.exitPrice === null);
+      })();
+    navigate(
+      held && n.predictionId
+        ? `/app/journal?trade=${n.predictionId}`
+        : '/app/signals'
+    );
+  };
 
   return (
     <div className="bell" ref={wrap}>
@@ -152,15 +169,26 @@ export function NotificationsBell() {
         <div className="bell-panel" role="dialog" aria-label="Alerts">
           <div className="bell-head">
             <strong>Alerts</strong>
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={() => {
-                setOpen(false);
-                navigate('/app/settings#alerts');
-              }}
-            >
-              Settings
-            </button>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  setOpen(false);
+                  navigate('/app/notifications');
+                }}
+              >
+                View all
+              </button>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  setOpen(false);
+                  navigate('/app/settings#alerts');
+                }}
+              >
+                Settings
+              </button>
+            </div>
           </div>
           {items.length === 0 ? (
             <p className="bell-empty">
@@ -168,26 +196,42 @@ export function NotificationsBell() {
               your journal trades here.
             </p>
           ) : (
-            <ul className="bell-list">
-              {items.map((n) => (
-                <li key={n.id}>
-                  <button
-                    className={`bell-item${n.read ? '' : ' unread'}`}
-                    onClick={() => {
-                      setOpen(false);
-                      openFrom(n);
-                    }}
-                  >
-                    <span className={`dot ${TONE[n.kind] ?? ''}`} />
-                    <span className="bell-copy">
-                      <strong>{n.title}</strong>
-                      <span>{n.body}</span>
-                      <em>{relative(n.createdAt, now)}</em>
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <>
+              <ul className="bell-list">
+                {items.slice(0, 20).map((n) => (
+                  <li key={n.id}>
+                    <button
+                      className={`bell-item${n.read ? '' : ' unread'}`}
+                      onClick={() => {
+                        setOpen(false);
+                        openFrom(n);
+                      }}
+                    >
+                      <span className={`dot ${TONE[n.kind] ?? ''}`} />
+                      <span className="bell-copy">
+                        <strong>{n.title}</strong>
+                        <span>{n.body}</span>
+                        <em>{relative(n.createdAt, now)}</em>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <div className="bell-head" style={{ borderTop: '1px solid var(--line)', borderBottom: 0 }}>
+                <span className="faint" style={{ fontSize: 12 }}>
+                  Auto-deleted after 30 days
+                </span>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => {
+                    setOpen(false);
+                    navigate('/app/notifications');
+                  }}
+                >
+                  All notifications
+                </button>
+              </div>
+            </>
           )}
         </div>
       )}

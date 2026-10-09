@@ -256,7 +256,7 @@ export interface UserTrade {
   stopPrice: number | null;
   targetPrice: number | null;
   exitedAt: string | null;
-  /** 'stop' | 'target' when detected automatically, 'manual' when typed, 'mt5' from MetaTrader. */
+  /** 'stop' | 'target' when detected automatically, 'breakeven' for a scratch at entry, 'manual' when typed, 'mt5' from MetaTrader. */
   exitReason: string | null;
   notes: string | null;
   /** 'mt5' when synced from MetaTrader. */
@@ -276,6 +276,8 @@ export interface JournalData {
     open: number;
     wins: number;
     losses: number;
+    /** Closed at ~0 pips (breakeven scratch). */
+    breakevens: number;
     netPips: number;
     engineNetPips: number;
     engineScored: number;
@@ -472,6 +474,51 @@ export interface AdminUser {
   lastSeenAt: string | null;
   trades: number;
   pushDevices: number;
+  notifications: number;
+}
+
+export interface AdminUserDetail {
+  user: {
+    id: number;
+    email: string;
+    name: string;
+    plan: string;
+    planStatus: string;
+    createdAt: string;
+    lastSeenAt: string | null;
+    unreadNotifications: number;
+    pushDevices: { id: number; createdAt: string }[];
+  };
+  trades: {
+    id: string;
+    pairCode: PairCode;
+    side: 'LONG' | 'SHORT';
+    entryPrice: number | null;
+    exitPrice: number | null;
+    lots: number | null;
+    exitReason: string | null;
+    pips: number | null;
+    status: OutcomeStatus;
+    updatedAt: string;
+  }[];
+  notifications: {
+    id: number;
+    kind: string;
+    title: string;
+    createdAt: string;
+    read: boolean;
+  }[];
+}
+
+export interface AdminSignal {
+  id: string;
+  pairCode: PairCode;
+  direction: Direction;
+  session: string;
+  confidence: number;
+  validFrom: string;
+  status: OutcomeStatus;
+  movementPips: number | null;
 }
 
 export interface BacktestGroup {

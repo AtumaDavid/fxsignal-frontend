@@ -1,16 +1,27 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
 import { OutcomeTag } from '../../components/Market';
 import { Empty, Spinner } from '../../components/ui/Empty';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { Select } from '../../components/ui/Select';
 import { adminApi } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
-import { dateTime, relative, useNow } from '../../lib/format';
+import {
+  callLabel,
+  dateTime,
+  directionTone,
+  price,
+  relative,
+  signedPips,
+  useNow,
+} from '../../lib/format';
 import { usePrefs } from '../../lib/prefs';
 import type {
   AdminOverview,
+  AdminSignal,
   AdminUser,
+  AdminUserDetail,
   BacktestRunInfo,
 } from '../../lib/types';
 import { Link } from 'react-router-dom';
@@ -74,38 +85,324 @@ function issues(o: AdminOverview, now: number) {
   return list;
 }
 
-function UsersPanel() {
+function UserDetail({
+  userId,
+  onClose,
+  onChanged,
+}: {
+  userId: number;
+  onClose: () => void;
+  /** Refresh the users table (plan change / delete). */
+  onChanged: () => void;
+}) {
   const { timeZone } = usePrefs();
-  const [q, setQ] = useState('');
-  const [users, setUsers] = useState<AdminUser[] | null>(null);
+  const { user: me } = useAuth();
+  const [detail, setDetail] = useState<AdminUserDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState<number | null>(null);
-  const now = useNow(60_000);
+  const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     const controller = new AbortController();
-    const id = setTimeout(() => {
-      adminApi
-        .users(q, controller.signal)
-        .then(({ users: list }) => setUsers(list))
-        .catch((err) => {
-          if (!controller.signal.aborted)
-            setError(err instanceof Error ? err.message : 'Unavailable.');
-        });
-    }, 250);
+    adminApi
+      .userDetail(userId, controller.signal)
+      .then(setDetail)
+      .catch((err) => {
+        if (!controller.signal.aborted)
+          setError(err instanceof Error ? err.message : 'Unavailable.');
+      });
+    return () => controller.abort();
+  }, [userId]);
+
+  useEffect(() => {
+    closeRef.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onCloseRef.current();
+    };
+    document.addEventListener('keydown', onKey);
+    const { overflow } = document.body.style;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = overflow;
+    };
+  }, []);
+
+  async function setPlan(plan: 'FREE' | 'PRO') {
+    if (!detail) return;
+    setSaving(true);
+    try {
+      await adminApi.setPlan(detail.user.id, plan);
+      setDetail({
+        ...detail,
+        user: { ...detail.user, plan },
+      });
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not change plan.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function remove() {
+    if (!detail) return;
+    setSaving(true);
+    try {
+      await adminApi.deleteUser(detail.user.id);
+      onChanged();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not delete user.');
+      setSaving(false);
+      setConfirmDelete(false);
+    }
+  }
+
+  const u = detail?.user ?? null;
+  const isSelf = me && u && me.id === u.id;
+
+  return (
+    <>
+      <div className="drawer-backdrop" onClick={onClose} />
+      <aside
+        className="drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-label="User detail"
+        style={{ width: 'min(560px, 100vw)' }}
+      >
+        <div className="drawer-head">
+          <div className="drawer-head-copy">
+            <h2>{u ? u.email : 'User'}</h2>
+            <span className="faint" style={{ fontSize: 12 }}>
+              {u ? `${u.name} · joined ${dateTime(u.createdAt, timeZone)}` : 'Loading…'}
+            </span>
+          </div>
+          <button
+            ref={closeRef}
+            className="btn btn-secondary drawer-close"
+            onClick={onClose}
+            aria-label="Close user detail"
+          >
+            <Icon name="close" size={15} /> Close
+          </button>
+        </div>
+        <div className="drawer-body">
+          {error && !detail ? (
+            <div className="alert alert-error">{error}</div>
+          ) : !detail || !u ? (
+            <div className="stack">
+              <div className="skeleton" style={{ height: 60 }} />
+              <div className="skeleton" style={{ height: 120 }} />
+            </div>
+          ) : (
+            <>
+              {error && <div className="alert alert-error">{error}</div>}
+              <div className="kv">
+                <div>
+                  <span>Plan</span>
+                  <strong>{u.plan}</strong>
+                </div>
+                <div>
+                  <span>Status</span>
+                  <strong>{u.planStatus}</strong>
+                </div>
+                <div>
+                  <span>Last active</span>
+                  <strong>{u.lastSeenAt ? relative(u.lastSeenAt, Date.now()) : '—'}</strong>
+                </div>
+                <div>
+                  <span>Push devices</span>
+                  <strong>{u.pushDevices.length}</strong>
+                </div>
+                <div>
+                  <span>Unread alerts</span>
+                  <strong>{u.unreadNotifications}</strong>
+                </div>
+                <div>
+                  <span>Journal trades</span>
+                  <strong>{detail.trades.length} recent</strong>
+                </div>
+              </div>
+              <div className="detail-section">
+                <span className="label">Plan</span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {saving ? (
+                    <Spinner />
+                  ) : (
+                    <Select
+                      label={`Plan for ${u.email}`}
+                      value={u.plan === 'PRO' ? 'PRO' : 'FREE'}
+                      onChange={(plan) => void setPlan(plan)}
+                      options={[
+                        { value: 'FREE', label: 'Free' },
+                        { value: 'PRO', label: 'Pro' },
+                      ]}
+                      active={u.plan === 'PRO'}
+                      minWidth={120}
+                    />
+                  )}
+                </div>
+              </div>
+              <div className="detail-section">
+                <span className="label">Recent journal trades</span>
+                {detail.trades.length === 0 ? (
+                  <p className="faint" style={{ fontSize: 13 }}>
+                    No trades logged.
+                  </p>
+                ) : (
+                  <div className="table-wrap panel">
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>Pair</th>
+                          <th>Side</th>
+                          <th className="r">Entry → exit</th>
+                          <th className="r">Pips</th>
+                          <th>Close</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {detail.trades.map((t) => (
+                          <tr key={t.id}>
+                            <td className="strong mono">{t.pairCode}</td>
+                            <td>{t.side === 'LONG' ? 'Long' : 'Short'}</td>
+                            <td className="r num">
+                              {t.entryPrice === null
+                                ? '—'
+                                : price(t.pairCode, t.entryPrice)}{' '}
+                              →{' '}
+                              {t.exitPrice === null
+                                ? 'open'
+                                : price(t.pairCode, t.exitPrice)}
+                            </td>
+                            <td className="r num">
+                              {t.pips === null
+                                ? '—'
+                                : t.exitReason === 'breakeven'
+                                  ? 'BE'
+                                  : signedPips(t.pips)}
+                            </td>
+                            <td className="faint">
+                              {t.exitPrice === null
+                                ? 'Open'
+                                : t.exitReason === 'target'
+                                  ? 'Target'
+                                  : t.exitReason === 'stop'
+                                    ? 'Stop'
+                                    : t.exitReason === 'breakeven'
+                                      ? 'Breakeven'
+                                      : 'Manual'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+              <div className="detail-section">
+                <span className="label">Recent notifications</span>
+                {detail.notifications.length === 0 ? (
+                  <p className="faint" style={{ fontSize: 13 }}>
+                    None.
+                  </p>
+                ) : (
+                  <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 8 }}>
+                    {detail.notifications.map((n) => (
+                      <li key={n.id} className="faint" style={{ fontSize: 12.5 }}>
+                        <span className="strong" style={{ color: 'var(--text-2)' }}>
+                          {n.read ? '' : '● '}
+                          {n.title}
+                        </span>{' '}
+                        · <span className="mono">{n.kind}</span> ·{' '}
+                        {relative(n.createdAt, Date.now())}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div className="detail-section">
+                <span className="label">Danger zone</span>
+                <p className="faint" style={{ fontSize: 12.5 }}>
+                  {isSelf
+                    ? 'You cannot delete your own admin account.'
+                    : 'Permanently deletes the account with all trades, alerts and devices. Cannot be undone.'}
+                </p>
+                <div>
+                  <button
+                    className="btn btn-danger btn-sm"
+                    disabled={saving || !!isSelf}
+                    onClick={() => setConfirmDelete(true)}
+                  >
+                    Delete user
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </aside>
+      {confirmDelete && detail && (
+        <ConfirmModal
+          title={`Delete ${detail.user.email}?`}
+          message="The account, journal trades, notifications and push devices are permanently deleted. This cannot be undone."
+          confirmLabel="Delete user"
+          danger
+          busy={saving}
+          onCancel={() => setConfirmDelete(false)}
+          onConfirm={() => void remove()}
+        />
+      )}
+    </>
+  );
+}
+
+function UsersPanel() {
+  const { timeZone } = usePrefs();
+  const [q, setQ] = useState('');
+  const [plan, setPlanFilter] = useState('ALL');
+  const [users, setUsers] = useState<AdminUser[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState<number | null>(null);
+  const [openId, setOpenId] = useState<number | null>(null);
+  const now = useNow(60_000);
+
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      try {
+        const { users: list } = await adminApi.users(q, plan, signal);
+        setUsers(list);
+        setError(null);
+      } catch (err) {
+        if (signal?.aborted) return;
+        setError(err instanceof Error ? err.message : 'Unavailable.');
+      }
+    },
+    [q, plan]
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const id = setTimeout(() => void load(controller.signal), 250);
     return () => {
       clearTimeout(id);
       controller.abort();
     };
-  }, [q]);
+  }, [load]);
 
-  async function setPlan(user: AdminUser, plan: 'FREE' | 'PRO') {
+  async function setPlan(user: AdminUser, next: 'FREE' | 'PRO') {
     setSaving(user.id);
     try {
-      await adminApi.setPlan(user.id, plan);
+      await adminApi.setPlan(user.id, next);
       setUsers(
         (list) =>
-          list?.map((u) => (u.id === user.id ? { ...u, plan } : u)) ?? null
+          list?.map((u) => (u.id === user.id ? { ...u, plan: next } : u)) ??
+          null
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not change plan.');
@@ -119,15 +416,31 @@ function UsersPanel() {
       <div className="panel-head">
         <div>
           <h2>Users</h2>
-          <p>Newest first. Change a plan by hand until payments are live.</p>
+          <p>
+            Newest first. Select a row for trades, alerts and account actions.
+          </p>
         </div>
-        <input
-          className="input admin-search"
-          placeholder="Search email or name"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          aria-label="Search users"
-        />
+        <div className="page-actions">
+          <Select
+            label="Plan filter"
+            value={plan}
+            onChange={setPlanFilter}
+            options={[
+              { value: 'ALL', label: 'All plans' },
+              { value: 'FREE', label: 'Free' },
+              { value: 'PRO', label: 'Pro' },
+            ]}
+            active={plan !== 'ALL'}
+            minWidth={110}
+          />
+          <input
+            className="input admin-search"
+            placeholder="Search email or name"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            aria-label="Search users"
+          />
+        </div>
       </div>
       {error && (
         <div className="alert alert-error" style={{ margin: 16 }}>
@@ -150,26 +463,31 @@ function UsersPanel() {
                 <th>Joined</th>
                 <th>Last active</th>
                 <th className="r">Journal</th>
-                <th className="r">Push devices</th>
+                <th className="r">Alerts</th>
+                <th className="r">Push</th>
               </tr>
             </thead>
             <tbody>
               {users.map((u) => (
-                <tr key={u.id}>
+                <tr
+                  key={u.id}
+                  onClick={() => setOpenId(u.id)}
+                  style={{ cursor: 'pointer' }}
+                >
                   <td>
                     <span className="strong">{u.name}</span>
                     <div className="faint" style={{ fontSize: 12 }}>
                       {u.email}
                     </div>
                   </td>
-                  <td>
+                  <td onClick={(e) => e.stopPropagation()}>
                     {saving === u.id ? (
                       <Spinner />
                     ) : (
                       <Select
                         label={`Plan for ${u.email}`}
                         value={u.plan === 'PRO' ? 'PRO' : 'FREE'}
-                        onChange={(plan) => void setPlan(u, plan)}
+                        onChange={(next) => void setPlan(u, next)}
                         options={[
                           { value: 'FREE', label: 'Free' },
                           { value: 'PRO', label: 'Pro' },
@@ -184,12 +502,20 @@ function UsersPanel() {
                     {u.lastSeenAt ? relative(u.lastSeenAt, now) : '—'}
                   </td>
                   <td className="r num">{u.trades}</td>
+                  <td className="r num">{u.notifications}</td>
                   <td className="r num">{u.pushDevices}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+      {openId !== null && (
+        <UserDetail
+          userId={openId}
+          onClose={() => setOpenId(null)}
+          onChanged={() => void load()}
+        />
       )}
     </section>
   );
@@ -334,6 +660,302 @@ function BacktestPanel() {
   );
 }
 
+function BroadcastPanel({ totalUsers }: { totalUsers: number }) {
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [audience, setAudience] = useState('ALL');
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<{
+    tone: 'success' | 'error';
+    text: string;
+  } | null>(null);
+
+  async function send() {
+    setBusy(true);
+    try {
+      const result = await adminApi.broadcast(
+        title.trim(),
+        body.trim(),
+        audience as 'ALL' | 'FREE' | 'PRO'
+      );
+      setNotice({
+        tone: 'success',
+        text: `Sent to ${result.sent} user${result.sent === 1 ? '' : 's'} (${result.audience}).`,
+      });
+      setTitle('');
+      setBody('');
+      setConfirming(false);
+    } catch (err) {
+      setNotice({
+        tone: 'error',
+        text: err instanceof Error ? err.message : 'Could not send.',
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const valid = title.trim().length >= 3 && body.trim().length >= 3;
+
+  return (
+    <section className="panel">
+      <div className="panel-head">
+        <div>
+          <h2>Announcement</h2>
+          <p>
+            Send a notification to the bell of {totalUsers} user
+            {totalUsers === 1 ? '' : 's'}. Use sparingly.
+          </p>
+        </div>
+        <Select
+          label="Audience"
+          value={audience}
+          onChange={setAudience}
+          options={[
+            { value: 'ALL', label: 'Everyone' },
+            { value: 'FREE', label: 'Free only' },
+            { value: 'PRO', label: 'Pro only' },
+          ]}
+          active={audience !== 'ALL'}
+          minWidth={120}
+        />
+      </div>
+      <div className="panel-body stack">
+        {notice && (
+          <div className={`alert alert-${notice.tone}`}>{notice.text}</div>
+        )}
+        <label className="field">
+          <span>Title (3–80 chars)</span>
+          <input
+            className="input"
+            maxLength={80}
+            placeholder="e.g. Weekend maintenance tonight"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </label>
+        <label className="field">
+          <span>Message (3–280 chars)</span>
+          <textarea
+            className="input textarea"
+            rows={2}
+            maxLength={280}
+            placeholder="What should users know?"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+          />
+        </label>
+        <div>
+          <button
+            className="btn btn-secondary"
+            disabled={!valid || busy}
+            onClick={() => setConfirming(true)}
+          >
+            <Icon name="mail" size={14} /> Send announcement
+          </button>
+        </div>
+      </div>
+      {confirming && (
+        <ConfirmModal
+          title="Send this announcement?"
+          message={`"${title.trim()}" goes to the bell of ${audience === 'ALL' ? 'everyone' : `${audience} users`}. It cannot be recalled.`}
+          confirmLabel="Send now"
+          busy={busy}
+          onCancel={() => setConfirming(false)}
+          onConfirm={() => void send()}
+        />
+      )}
+    </section>
+  );
+}
+
+function OpsPanel({ onChanged }: { onChanged: () => void }) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{
+    tone: 'success' | 'error';
+    text: string;
+  } | null>(null);
+
+  async function run(kind: 'maintenance' | 'loop') {
+    setBusy(kind);
+    setNotice(null);
+    try {
+      if (kind === 'maintenance') await adminApi.runMaintenance();
+      else await adminApi.runCandleLoop();
+      setNotice({
+        tone: 'success',
+        text:
+          kind === 'maintenance'
+            ? 'Maintenance pass finished. Signals, settlement and outlook are fresh.'
+            : 'Candle-close loop finished. H1 checkpoint, M15 tracking and journal auto-exits ran.',
+      });
+      onChanged();
+    } catch (err) {
+      setNotice({
+        tone: 'error',
+        text: err instanceof Error ? err.message : 'Job failed.',
+      });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <section className="panel">
+      <div className="panel-head">
+        <div>
+          <h2>Operations</h2>
+          <p>Run the background jobs on demand instead of waiting.</p>
+        </div>
+      </div>
+      <div className="panel-body stack">
+        {notice && (
+          <div className={`alert alert-${notice.tone}`}>{notice.text}</div>
+        )}
+        <div className="page-actions">
+          <button
+            className="btn btn-secondary"
+            disabled={busy !== null}
+            onClick={() => void run('maintenance')}
+          >
+            {busy === 'maintenance' ? <Spinner /> : <Icon name="refresh" size={14} />}{' '}
+            Run maintenance now
+          </button>
+          <button
+            className="btn btn-secondary"
+            disabled={busy !== null}
+            onClick={() => void run('loop')}
+          >
+            {busy === 'loop' ? <Spinner /> : <Icon name="bolt" size={14} />}{' '}
+            Run candle-close loop
+          </button>
+        </div>
+        <p className="faint" style={{ fontSize: 12.5 }}>
+          Maintenance regenerates signals, settles expired windows and prunes
+          old notifications. The loop replays M15/H1 closes, announces fills
+          and closes journal trades at their stop, target or breakeven.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function SignalsPanel() {
+  const { timeZone } = usePrefs();
+  const [signals, setSignals] = useState<AdminSignal[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    adminApi
+      .signals(20, controller.signal)
+      .then(({ signals: list }) => setSignals(list))
+      .catch((err) => {
+        if (!controller.signal.aborted)
+          setError(err instanceof Error ? err.message : 'Unavailable.');
+      });
+    return () => controller.abort();
+  }, []);
+
+  return (
+    <section className="panel">
+      <div className="panel-head">
+        <div>
+          <h2>Recent signals</h2>
+          <p>Latest published calls and how each settled.</p>
+        </div>
+      </div>
+      {error ? (
+        <div className="alert alert-error" style={{ margin: 16 }}>
+          {error}
+        </div>
+      ) : !signals ? (
+        <div className="panel-body">
+          <div className="skeleton" style={{ height: 120 }} />
+        </div>
+      ) : signals.length === 0 ? (
+        <Empty icon="signal" title="No signals yet" />
+      ) : (
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Published</th>
+                <th>Pair</th>
+                <th>Call</th>
+                <th>Session</th>
+                <th className="r">Conf.</th>
+                <th>Result</th>
+                <th className="r">Pips</th>
+              </tr>
+            </thead>
+            <tbody>
+              {signals.map((s) => (
+                <tr key={s.id}>
+                  <td className="num">{dateTime(s.validFrom, timeZone)}</td>
+                  <td className="strong mono">{s.pairCode}</td>
+                  <td>
+                    <span className={`tag tag-${directionTone(s.direction)}`}>
+                      {callLabel({ direction: s.direction })}
+                    </span>
+                  </td>
+                  <td>{s.session}</td>
+                  <td className="r num">{s.confidence}%</td>
+                  <td>
+                    <OutcomeTag status={s.status} />
+                  </td>
+                  <td className="r num">
+                    {s.movementPips === null ? '—' : signedPips(s.movementPips)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ClearFailuresButton({ onCleared }: { onCleared: () => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function clear() {
+    setBusy(true);
+    try {
+      await adminApi.clearFailures();
+      setConfirming(false);
+      onCleared();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <button
+        className="btn btn-ghost btn-sm"
+        onClick={() => setConfirming(true)}
+      >
+        Clear log
+      </button>
+      {confirming && (
+        <ConfirmModal
+          title="Clear failed deliveries?"
+          message="The failure log is emptied. Delivery itself is unaffected."
+          confirmLabel="Clear log"
+          danger
+          busy={busy}
+          onCancel={() => setConfirming(false)}
+          onConfirm={() => void clear()}
+        />
+      )}
+    </>
+  );
+}
+
 export default function Admin() {
   const { user } = useAuth();
   const { timeZone } = usePrefs();
@@ -374,8 +996,8 @@ export default function Admin() {
         <div>
           <h1>Admin</h1>
           <p>
-            Users, data credits, alert delivery and server health. Refreshes
-            every minute.
+            Users, signals, announcements, jobs, data credits, alert delivery
+            and server health. Refreshes every minute.
           </p>
         </div>
         <div className="page-actions">
@@ -608,6 +1230,9 @@ export default function Admin() {
                 <h2>Failed alerts</h2>
                 <p>Email and push deliveries that did not go through</p>
               </div>
+              {data.alerts.failures.length > 0 && (
+                <ClearFailuresButton onCleared={() => void load()} />
+              )}
             </div>
             {data.alerts.failures.length === 0 ? (
               <Empty icon="check" title="No failed deliveries" />
@@ -642,6 +1267,13 @@ export default function Admin() {
               </div>
             )}
           </section>
+
+          <div className="grid-2" style={{ alignItems: 'start' }}>
+            <OpsPanel onChanged={() => void load()} />
+            <BroadcastPanel totalUsers={data.counts.users} />
+          </div>
+
+          <SignalsPanel />
 
           <BacktestPanel />
 

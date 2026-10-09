@@ -296,7 +296,7 @@ export function SignalDrawer({
         aria-labelledby="signal-drawer-title"
       >
         <div className="drawer-head">
-          <div>
+          <div className="drawer-head-copy">
             <h2 id="signal-drawer-title">
               {prediction.pairCode}
               <span className={`tag tag-${tone}`}>{callLabel(prediction)}</span>
@@ -308,11 +308,11 @@ export function SignalDrawer({
           </div>
           <button
             ref={closeRef}
-            className="icon-btn"
+            className="btn btn-secondary drawer-close"
             onClick={onClose}
-            aria-label="Close"
+            aria-label="Close trade plan"
           >
-            <Icon name="close" size={17} />
+            <Icon name="close" size={15} /> Close
           </button>
         </div>
         <div className="drawer-body" ref={bodyRef}>

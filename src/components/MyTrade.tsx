@@ -2,6 +2,7 @@ import { useTodayRisk } from './Guardrails';
 import { useState, type FormEvent } from 'react';
 import { Icon } from './Icon';
 import { Spinner } from './ui/Empty';
+import { ConfirmModal } from './ui/ConfirmModal';
 import { price, signedPips } from '../lib/format';
 import { useJournal } from '../lib/journal';
 import { useDashboard } from '../lib/dashboard';
@@ -67,7 +68,8 @@ function TradeForm({
   const { data } = useDashboard();
   // New entries start from what the signal published, so logging a trade
   // that followed the plan is one click: entry at the zone middle, exit at
-  // the engine's result once it has one, size from the calculator settings.
+  // the engine's result once it has one, stop/target from the signal, size
+  // from the calculator settings (0.01 lots when the calculator has no size).
   const planned = (() => {
     const mid = (prediction.entryLow + prediction.entryHigh) / 2;
     const size = sizeFor(
@@ -78,7 +80,8 @@ function TradeForm({
     return {
       entry: mid.toFixed(precision(prediction)),
       exit: engineExit(prediction)?.price.toFixed(precision(prediction)) ?? '',
-      lots: size.lots && size.lots > 0 ? size.lots.toFixed(2) : '',
+      lots:
+        size.lots && size.lots > 0 ? size.lots.toFixed(2) : '0.01',
       stop: prediction.invalidationPrice.toFixed(precision(prediction)),
       target: prediction.targetPrice.toFixed(precision(prediction)),
     };
@@ -148,12 +151,13 @@ function TradeForm({
     <form className="trade-form" onSubmit={submit}>
       {prefilled && (
         <p className="faint" style={{ fontSize: 12.5 }}>
-          Filled from the signal: entry at the middle of the zone
+          Filled from the signal: entry at the middle of the zone, stop and
+          target from the plan
           {planned.exit
             ? `, exit at the engine's ${engineExit(prediction)?.label}`
             : ''}
-          {planned.lots ? ', size from your calculator settings' : ''}. Change
-          anything that differs from your actual fills.
+          , size {planned.lots} lots by default. Change anything that differs
+          from your actual fills.
         </p>
       )}
       {prefilled && risk && (risk.tradeLimitHit || risk.lossLimitHit) && (
@@ -199,13 +203,23 @@ function TradeForm({
             value={exit}
             onChange={(e) => setExit(e.target.value)}
           />
+          <small>
+            <button
+              type="button"
+              className="link"
+              onClick={() => entry.trim() && setExit(entry.trim())}
+              data-tip="Scratch the trade at your entry: saved as a breakeven (0 pips), not a win or loss."
+            >
+              Exit at entry (breakeven)
+            </button>
+          </small>
         </label>
         <label className="field">
           <span>Lots</span>
           <input
             className="input"
             inputMode="decimal"
-            placeholder="0.50"
+            placeholder="0.01"
             value={lots}
             onChange={(e) => setLots(e.target.value)}
           />
@@ -276,12 +290,45 @@ export function MyTrade({
   autoOpen?: boolean;
 }) {
   const { data, error, tradeFor, remove, save } = useJournal();
+  const { data: dashboard } = useDashboard();
   const [editing, setEditing] = useState(false);
   const [autoOpened, setAutoOpened] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [confirmClose, setConfirmClose] = useState<{
+    price: number;
+    reason: 'manual' | 'breakeven';
+  } | null>(null);
+  const [moving, setMoving] = useState(false);
+  const [confirmBEStop, setConfirmBEStop] = useState(false);
   const trade = tradeFor(prediction.id);
   const result = engineExit(prediction);
+  // Best guess at "the price right now" for an early exit: live tick first,
+  // then the dashboard price, then the entry.
+  const livePrice =
+    prediction.live?.lastPrice ??
+    dashboard?.prices.find((q) => q.pairCode === prediction.pairCode)?.price ??
+    trade?.entryPrice ??
+    (prediction.entryLow + prediction.entryHigh) / 2;
+  const [closePrice, setClosePrice] = useState<string | null>(null);
+
+  async function closeAt(exitPrice: number, reason: 'manual' | 'breakeven') {
+    if (!trade) return;
+    setClosing(true);
+    await save(prediction.id, {
+      side: trade.side,
+      entryPrice: trade.entryPrice,
+      exitPrice,
+      lots: trade.lots,
+      stopPrice: trade.stopPrice,
+      targetPrice: trade.targetPrice,
+      notes: trade.notes,
+      exitReason: reason,
+    }).catch(() => undefined);
+    setClosing(false);
+    setConfirmClose(null);
+  }
   // "Log trade": open the form once the journal has loaded, if not logged yet.
   if (autoOpen && !autoOpened && data && !trade && !prediction.continuesId) {
     setAutoOpened(true);
@@ -327,6 +374,36 @@ export function MyTrade({
   }
 
   const pair = prediction.pairCode;
+  const mid = (prediction.entryLow + prediction.entryHigh) / 2;
+  // Your stop already sits at the entry: a return scratches at breakeven.
+  const stopAtEntry =
+    trade.entryPrice !== null &&
+    trade.stopPrice !== null &&
+    Math.abs(trade.stopPrice - trade.entryPrice) < trade.entryPrice * 1e-9;
+  // The plan protects itself: TP1 booked (stop trails to entry) or the live
+  // engine stop is already at the entry.
+  const planStopAtEntry =
+    prediction.live?.stopNow !== null &&
+    prediction.live?.stopNow !== undefined &&
+    Math.abs(prediction.live.stopNow - mid) < mid * 1e-9;
+  const planProtects =
+    (prediction.live?.tpHits ?? 0) >= 1 || planStopAtEntry;
+
+  async function moveStopToEntry() {
+    if (!trade || trade.entryPrice === null) return;
+    setMoving(true);
+    await save(prediction.id, {
+      side: trade.side,
+      entryPrice: trade.entryPrice,
+      exitPrice: trade.exitPrice,
+      lots: trade.lots,
+      stopPrice: trade.entryPrice,
+      targetPrice: trade.targetPrice,
+      notes: trade.notes,
+    }).catch(() => undefined);
+    setMoving(false);
+    setConfirmBEStop(false);
+  }
   return (
     <div className="trade-card">
       <div className="kv">
@@ -358,7 +435,11 @@ export function MyTrade({
                     : ''
             }
           >
-            {trade.pips === null ? 'Open' : `${signedPips(trade.pips)}p`}
+            {trade.pips === null
+              ? 'Open'
+              : trade.exitReason === 'breakeven'
+                ? 'Breakeven'
+                : `${signedPips(trade.pips)}p`}
           </strong>
         </div>
         <div>
@@ -371,18 +452,41 @@ export function MyTrade({
           <span>Exit</span>
           <strong>
             {trade.exitPrice === null
-              ? trade.stopPrice !== null || trade.targetPrice !== null
-                ? 'Watching'
-                : 'Open'
+              ? stopAtEntry
+                ? 'BE protected'
+                : trade.stopPrice !== null || trade.targetPrice !== null
+                  ? 'Watching'
+                  : 'Open'
               : trade.exitReason === 'target'
                 ? 'Target (auto)'
                 : trade.exitReason === 'stop'
                   ? 'Stop (auto)'
-                  : 'Manual'}
+                  : trade.exitReason === 'breakeven'
+                    ? 'Breakeven'
+                    : 'Manual'}
           </strong>
         </div>
       </div>
       {trade.notes && <p className="trade-notes">{trade.notes}</p>}
+      {trade.exitPrice === null &&
+        trade.entryPrice !== null &&
+        planProtects &&
+        !stopAtEntry && (
+          <div className="trade-empty">
+            <p>
+              TP1 booked — the plan moves the stop to your entry (
+              {price(pair, trade.entryPrice)}). Move yours too with one tap;
+              if price comes back you scratch automatically at breakeven.
+            </p>
+            <button
+              className="btn btn-secondary btn-sm"
+              disabled={moving}
+              onClick={() => setConfirmBEStop(true)}
+            >
+              {moving && <Spinner />} Move stop to breakeven
+            </button>
+          </div>
+        )}
       {trade.exitPrice === null && result && (
         <div className="trade-empty">
           <p>
@@ -392,21 +496,89 @@ export function MyTrade({
           <button
             className="btn btn-secondary btn-sm"
             disabled={closing}
-            onClick={async () => {
-              setClosing(true);
-              await save(prediction.id, {
-                side: trade.side,
-                entryPrice: trade.entryPrice,
-                exitPrice: result.price,
-                lots: trade.lots,
-                notes: trade.notes,
-              }).catch(() => undefined);
-              setClosing(false);
-            }}
+            onClick={() =>
+              setConfirmClose({ price: result.price, reason: 'manual' })
+            }
           >
             {closing && <Spinner />} Close at {price(pair, result.price)}
           </button>
         </div>
+      )}
+      {trade.exitPrice === null && (
+        <div className="trade-close">
+          <div className="trade-close-head">
+            <span>
+              {trade.stopPrice !== null || trade.targetPrice !== null
+                ? 'Stop / target watched'
+                : 'Open trade'}
+            </span>
+            <span className="tag">
+              {trade.exitReason === null ? 'open' : trade.exitReason}
+            </span>
+          </div>
+          <p>
+            {stopAtEntry
+              ? 'Breakeven-protected: your stop sits at your entry — a return scratches automatically at 0 pips and the journal records breakeven.'
+              : trade.stopPrice !== null || trade.targetPrice !== null
+                ? 'Your stop or target closes this trade automatically when a 15-minute candle closes through it — you will get a journal alert. Or leave early below.'
+                : 'No stop or target set, so this trade never closes on its own. Set them with Edit, or leave early below.'}
+          </p>
+          <div className="trade-close-row">
+            <input
+              className="input"
+              inputMode="decimal"
+              aria-label="Exit price for early close"
+              value={closePrice ?? livePrice.toFixed(precision(prediction))}
+              onChange={(e) => setClosePrice(e.target.value)}
+            />
+            <button
+              className="btn btn-primary btn-sm"
+              disabled={closing}
+              onClick={() => {
+                const value = Number(
+                  closePrice ?? livePrice.toFixed(precision(prediction))
+                );
+                if (!Number.isFinite(value) || value <= 0) return;
+                setConfirmClose({ price: value, reason: 'manual' });
+              }}
+            >
+              {closing && <Spinner />} Close trade now
+            </button>
+            {trade.entryPrice !== null && (
+              <button
+                className="btn btn-secondary btn-sm"
+                disabled={closing}
+                data-tip="Scratch the trade at your entry: 0 pips, kept out of wins and losses."
+                onClick={() =>
+                  setConfirmClose({
+                    price: trade.entryPrice!,
+                    reason: 'breakeven',
+                  })
+                }
+              >
+                Breakeven
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      {trade.exitPrice !== null && (
+        <p className="faint" style={{ fontSize: 12.5 }}>
+          Closed{' '}
+          {trade.exitReason === 'target'
+            ? 'at your target (automatic)'
+            : trade.exitReason === 'stop'
+              ? 'at your stop (automatic)'
+              : trade.exitReason === 'breakeven'
+                ? 'at breakeven — scratched at entry, no gain no loss'
+                : trade.exitReason === 'mt5'
+                  ? 'via MT5 sync'
+                  : 'manually'}
+          {trade.exitedAt
+            ? ` · ${new Date(trade.exitedAt).toLocaleString()}`
+            : ''}
+          . Edit to change the exit, or remove it from your journal.
+        </p>
       )}
       <div style={{ display: 'flex', gap: 8 }}>
         <button
@@ -418,16 +590,57 @@ export function MyTrade({
         <button
           className="btn btn-ghost btn-sm"
           disabled={removing}
-          onClick={async () => {
-            if (!window.confirm('Remove this trade from your journal?')) return;
-            setRemoving(true);
-            await remove(prediction.id).catch(() => undefined);
-            setRemoving(false);
-          }}
+          onClick={() => setConfirmRemove(true)}
         >
           Remove
         </button>
       </div>
+      {confirmRemove && (
+        <ConfirmModal
+          title="Remove this trade?"
+          message="It will be removed from your journal and your totals. The signal itself is not affected. This cannot be undone."
+          confirmLabel="Remove trade"
+          danger
+          busy={removing}
+          onCancel={() => setConfirmRemove(false)}
+          onConfirm={async () => {
+            setRemoving(true);
+            await remove(prediction.id).catch(() => undefined);
+            setRemoving(false);
+            setConfirmRemove(false);
+          }}
+        />
+      )}
+      {confirmClose !== null && (
+        <ConfirmModal
+          title={
+            confirmClose.reason === 'breakeven'
+              ? 'Close at breakeven?'
+              : 'Close this trade?'
+          }
+          message={
+            confirmClose.reason === 'breakeven'
+              ? `Your exit will be recorded at your entry (${price(pair, confirmClose.price)}): 0 pips, counted as a breakeven scratch — not a win or loss.`
+              : `Your exit will be recorded at ${price(pair, confirmClose.price)}. Pips are computed from your entry at ${price(pair, trade.entryPrice)}. You can edit the exit afterwards.`
+          }
+          confirmLabel={
+            confirmClose.reason === 'breakeven' ? 'Close at breakeven' : 'Close trade'
+          }
+          busy={closing}
+          onCancel={() => setConfirmClose(null)}
+          onConfirm={() => void closeAt(confirmClose.price, confirmClose.reason)}
+        />
+      )}
+      {confirmBEStop && trade.entryPrice !== null && (
+        <ConfirmModal
+          title="Move stop to breakeven?"
+          message={`Your stop moves to your entry (${price(pair, trade.entryPrice)}). The trade stays open: if price comes back, the auto-exit scratches it at 0 pips and your journal records breakeven.`}
+          confirmLabel="Move stop to entry"
+          busy={moving}
+          onCancel={() => setConfirmBEStop(false)}
+          onConfirm={() => void moveStopToEntry()}
+        />
+      )}
     </div>
   );
 }

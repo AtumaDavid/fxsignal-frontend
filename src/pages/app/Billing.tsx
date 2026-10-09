@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Icon } from '../../components/Icon';
 import { Empty, Spinner } from '../../components/ui/Empty';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { checkoutPlan, getAccount, getPlans } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import type { AccountInfo, BillingPlan } from '../../lib/types';
@@ -32,15 +33,19 @@ export default function Billing() {
     return () => controller.abort();
   }, []);
 
+  const [pendingPlan, setPendingPlan] = useState<'PRO' | 'FREE' | null>(null);
+
   async function change(plan: 'PRO' | 'FREE') {
-    if (
-      plan === 'FREE' &&
-      !window.confirm(
-        'Move to the Free plan? Your journal view drops to 7 days.'
-      )
-    )
+    if (plan === 'FREE') {
+      setPendingPlan(plan);
       return;
+    }
+    await applyPlan(plan);
+  }
+
+  async function applyPlan(plan: 'PRO' | 'FREE') {
     setBusy(plan);
+    setPendingPlan(null);
     setNotice(null);
     try {
       const result = await checkoutPlan(plan);
@@ -176,6 +181,18 @@ export default function Billing() {
             payments.
           </p>
         </div>
+      )}
+
+      {pendingPlan === 'FREE' && (
+        <ConfirmModal
+          title="Move to the Free plan?"
+          message="Your signal history drops to 7 days. Your journal trades are kept, but older signals fall outside the history window."
+          confirmLabel="Switch to Free"
+          danger
+          busy={busy === 'FREE'}
+          onCancel={() => setPendingPlan(null)}
+          onConfirm={() => void applyPlan('FREE')}
+        />
       )}
     </>
   );
