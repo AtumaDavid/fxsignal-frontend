@@ -888,9 +888,11 @@ button:disabled {
   height: 52px;
   padding: 0 24px;
   border-bottom: 1px solid var(--line);
-  background: rgba(9, 9, 11, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* Keep the PWA header crisp on iOS; Safari can soften controls behind a
+     translucent sticky header even after the scroll settles. */
+  background: var(--bg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 .topbar-menu {
   display: none;
