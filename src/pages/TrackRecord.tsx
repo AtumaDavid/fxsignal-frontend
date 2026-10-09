@@ -4,6 +4,7 @@ import { Icon } from '../components/Icon';
 import { OutcomeTag } from '../components/Market';
 import { PipsChart } from '../components/PipsChart';
 import { Brand } from '../components/ui/Brand';
+import { BacktestReport } from '../components/BacktestReport';
 import { Empty } from '../components/ui/Empty';
 import { getPublicTrackRecord } from '../lib/api';
 import {
@@ -271,6 +272,8 @@ export default function TrackRecord() {
                 stop counts first.
               </div>
             </section>
+
+            <BacktestReport />
 
             <section
               className="panel panel-body"

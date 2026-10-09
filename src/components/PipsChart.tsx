@@ -21,10 +21,17 @@ function niceStep(range: number, target = 4) {
 export function PipsChart({
   curve,
   timeZone,
+  unit = 'pips',
 }: {
   curve: PerformanceSummary['curve'];
   timeZone: TimeZonePref;
+  /** What the values are: pips (default) or R multiples. */
+  unit?: 'pips' | 'R';
 }) {
+  const fmt = (v: number) =>
+    unit === 'R'
+      ? `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(2)}R`
+      : signedPips(v);
   const wrap = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(640);
   const [hover, setHover] = useState<number | null>(null);
@@ -102,7 +109,7 @@ export function PipsChart({
         viewBox={`0 0 ${width} ${HEIGHT}`}
         height={HEIGHT}
         role="img"
-        aria-label={`Cumulative net pips, ending at ${signedPips(last.pips)}`}
+        aria-label={`Cumulative net ${unit}, ending at ${fmt(last.pips)}`}
         onPointerMove={onMove}
         onPointerLeave={() => setHover(null)}
       >
@@ -179,7 +186,7 @@ export function PipsChart({
               fontFamily: 'var(--font-mono)',
             }}
           >
-            {signedPips(last.pips)}
+            {fmt(last.pips)}
           </text>
         )}
       </svg>
@@ -189,9 +196,13 @@ export function PipsChart({
           style={{ left: `${(active.x / width) * 100}%`, top: active.y + 18 }}
         >
           <span>
-            {dateTime(active.at, timeZone)} · {active.pairCode}
+            {dateTime(active.at, timeZone)}
+            {active.pairCode ? ` · ${active.pairCode}` : ''}
           </span>
-          <strong>{signedPips(active.pips)} pips</strong>
+          <strong>
+            {fmt(active.pips)}
+            {unit === 'pips' ? ' pips' : ''}
+          </strong>
         </div>
       )}
     </div>

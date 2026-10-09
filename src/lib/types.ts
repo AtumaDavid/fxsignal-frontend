@@ -471,3 +471,76 @@ export interface AdminUser {
   trades: number;
   pushDevices: number;
 }
+
+export interface BacktestGroup {
+  key: string;
+  trades: number;
+  wins: number;
+  losses: number;
+  netR: number;
+}
+
+export interface BacktestTrade {
+  pairCode: PairCode;
+  session: string;
+  direction: 'LONG' | 'SHORT';
+  confidence: number;
+  publishedAt: string;
+  entryLow: number;
+  entryHigh: number;
+  stop: number;
+  tp1: number;
+  tp2: number;
+  tp3: number;
+  stopPips: number;
+  status: string;
+  filled: boolean;
+  closedAt: string | null;
+  pips: number | null;
+  r: number | null;
+  tpHits: number;
+  note: string;
+}
+
+export interface BacktestReport {
+  id: number;
+  months: number;
+  finishedAt: string | null;
+  summary: {
+    from: string;
+    to: string;
+    trades: number;
+    wins: number;
+    losses: number;
+    earlyExits: number;
+    timeExits: number;
+    notTriggered: number;
+    cancelled: number;
+    standAsides: number;
+    skippedOpen: number;
+    winRate: number | null;
+    netR: number;
+    netPips: number;
+    avgR: number | null;
+    profitFactor: number | null;
+    maxDrawdownR: number;
+    longestLosingStreak: number;
+    byPair: BacktestGroup[];
+    bySession: BacktestGroup[];
+    byMonth: BacktestGroup[];
+    curve: { at: string; r: number }[];
+  };
+  trades: BacktestTrade[];
+}
+
+export interface BacktestRunInfo {
+  id: number;
+  status: 'RUNNING' | 'DONE' | 'FAILED';
+  months: number;
+  from: string;
+  to: string;
+  createdAt: string;
+  finishedAt: string | null;
+  summary: { trades: number; netR: number; winRate: number | null } | null;
+  error: string | null;
+}

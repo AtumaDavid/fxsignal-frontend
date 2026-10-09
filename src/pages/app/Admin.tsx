@@ -8,7 +8,12 @@ import { adminApi } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { dateTime, relative, useNow } from '../../lib/format';
 import { usePrefs } from '../../lib/prefs';
-import type { AdminOverview, AdminUser } from '../../lib/types';
+import type {
+  AdminOverview,
+  AdminUser,
+  BacktestRunInfo,
+} from '../../lib/types';
+import { Link } from 'react-router-dom';
 
 const REFRESH_MS = 60_000;
 
@@ -180,6 +185,145 @@ function UsersPanel() {
                   </td>
                   <td className="r num">{u.trades}</td>
                   <td className="r num">{u.pushDevices}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function BacktestPanel() {
+  const { timeZone } = usePrefs();
+  const [runs, setRuns] = useState<BacktestRunInfo[] | null>(null);
+  const [running, setRunning] = useState(false);
+  const [months, setMonths] = useState('6');
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const data = await adminApi.backtests();
+      setRuns(data.runs);
+      setRunning(data.running);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unavailable.');
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+  // Poll while a run is in progress.
+  useEffect(() => {
+    if (!running) return;
+    const id = setInterval(() => void load(), 5_000);
+    return () => clearInterval(id);
+  }, [running, load]);
+
+  async function start() {
+    setError(null);
+    try {
+      await adminApi.runBacktest(Number(months));
+      setRunning(true);
+      void load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not start.');
+    }
+  }
+
+  return (
+    <section className="panel">
+      <div className="panel-head">
+        <div>
+          <h2>Backtest</h2>
+          <p>
+            Replays the rules over past months. The newest finished run is
+            published on the{' '}
+            <Link to="/track-record#backtest">track record</Link>. First run
+            costs about 7 data credits per pair per month range; re-runs of the
+            same range are free (cached).
+          </p>
+        </div>
+        <div className="page-actions">
+          <Select
+            label="Months"
+            value={months}
+            onChange={setMonths}
+            options={['1', '3', '6', '9', '12'].map((m) => ({
+              value: m,
+              label: `${m} month${m === '1' ? '' : 's'}`,
+            }))}
+            active={false}
+            minWidth={120}
+          />
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={() => void start()}
+            disabled={running}
+          >
+            {running ? <Spinner /> : null}{' '}
+            {running ? 'Running…' : 'Run backtest'}
+          </button>
+        </div>
+      </div>
+      {error && (
+        <div className="alert alert-error" style={{ margin: 16 }}>
+          {error}
+        </div>
+      )}
+      {!runs ? (
+        <div className="panel-body">
+          <div className="skeleton" style={{ height: 80 }} />
+        </div>
+      ) : runs.length === 0 ? (
+        <Empty icon="activity" title="No backtests yet" />
+      ) : (
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Started</th>
+                <th>Range</th>
+                <th>Status</th>
+                <th className="r">Trades</th>
+                <th className="r">Win rate</th>
+                <th className="r">Net R</th>
+              </tr>
+            </thead>
+            <tbody>
+              {runs.map((r) => (
+                <tr key={r.id} title={r.error ?? undefined}>
+                  <td className="num">{dateTime(r.createdAt, timeZone)}</td>
+                  <td>{r.months} mo</td>
+                  <td>
+                    <span
+                      className={`tag ${r.status === 'DONE' ? 'tag-up' : r.status === 'FAILED' ? 'tag-down' : 'tag-solid'}`}
+                    >
+                      {r.status === 'DONE'
+                        ? 'Done'
+                        : r.status === 'FAILED'
+                          ? 'Failed'
+                          : 'Running'}
+                    </span>
+                  </td>
+                  <td className="r num">{r.summary?.trades ?? '—'}</td>
+                  <td className="r num">
+                    {r.summary?.winRate === null ||
+                    r.summary?.winRate === undefined
+                      ? '—'
+                      : `${r.summary.winRate.toFixed(0)}%`}
+                  </td>
+                  <td
+                    className={`r num ${(r.summary?.netR ?? 0) > 0 ? 'up' : (r.summary?.netR ?? 0) < 0 ? 'down' : ''}`}
+                  >
+                    {r.summary
+                      ? `${r.summary.netR > 0 ? '+' : ''}${r.summary.netR.toFixed(2)}R`
+                      : r.error
+                        ? 'error'
+                        : '—'}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -498,6 +642,8 @@ export default function Admin() {
               </div>
             )}
           </section>
+
+          <BacktestPanel />
 
           <UsersPanel />
         </div>

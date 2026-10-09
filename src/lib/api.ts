@@ -18,6 +18,8 @@ import type {
   WeeklyRecap,
   AdminOverview,
   AdminUser,
+  BacktestReport,
+  BacktestRunInfo,
 } from './types';
 import type { RiskPrefs } from './guardrails';
 
@@ -298,6 +300,15 @@ export const adminApi = {
       `/admin/users${q ? `?q=${encodeURIComponent(q)}` : ''}`,
       { signal }
     ),
+  backtests: (signal?: AbortSignal) =>
+    request<{ running: boolean; runs: BacktestRunInfo[] }>('/admin/backtest', {
+      signal,
+    }),
+  runBacktest: (months: number) =>
+    request<{ id: number }>('/admin/backtest', {
+      method: 'POST',
+      body: { months },
+    }),
   setPlan: (id: number, plan: 'FREE' | 'PRO') =>
     request<{ user: { id: number; plan: string } }>(`/admin/users/${id}`, {
       method: 'PATCH',
@@ -317,6 +328,13 @@ export function getRecap(week?: string, signal?: AbortSignal) {
 
 export function getPublicTrackRecord(days: number, signal?: AbortSignal) {
   return request<PublicTrackRecord>(`/public/track-record?days=${days}`, {
+    signal,
+    authRequest: true,
+  });
+}
+
+export function getPublicBacktest(signal?: AbortSignal) {
+  return request<BacktestReport>('/public/backtest', {
     signal,
     authRequest: true,
   });
