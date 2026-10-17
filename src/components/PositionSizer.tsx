@@ -1,6 +1,7 @@
 import { tradeTargets } from '../lib/targets';
 import { useEffect, useState } from 'react';
 import { Select } from './ui/Select';
+import { useRiskPrefs } from '../lib/guardrails';
 import { useDashboard } from '../lib/dashboard';
 import type { Prediction } from '../lib/types';
 
@@ -117,6 +118,7 @@ export function money(value: number, currency: Currency) {
 /** Lot-size calculator for a signal; runs entirely in the browser. */
 export function PositionSizer({ prediction }: { prediction: Prediction }) {
   const { data } = useDashboard();
+  const { prefs: risk, mt5 } = useRiskPrefs();
   const [prefs, setPrefs] = useState<SizerPrefs>(readSizerPrefs);
 
   useEffect(() => {
@@ -198,6 +200,29 @@ export function PositionSizer({ prediction }: { prediction: Prediction }) {
         </label>
       </div>
 
+      {mt5?.equity !== undefined &&
+        mt5.currency &&
+        (CURRENCY_OPTIONS as { value: string }[]).some((o) => o.value === mt5.currency) &&
+        Number(prefs.balance) !== mt5.equity && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            data-tip="Size from your live MT5 equity (from the sync add-on) instead of the typed balance."
+            onClick={() =>
+              set({ balance: String(mt5.equity), currency: mt5.currency as Currency })
+            }
+          >
+            Use MT5 equity {money(mt5.equity!, mt5.currency as Currency)}
+          </button>
+        )}
+      {risk?.enabled &&
+        risk.maxRiskPerTradePct != null &&
+        Number(prefs.riskPct) > risk.maxRiskPerTradePct && (
+          <div className="alert alert-error" role="alert">
+            {prefs.riskPct}% is above your {risk.maxRiskPerTradePct}% max risk
+            per trade (Settings → Risk guardrails).
+          </div>
+        )}
       {!valid ? (
         <p className="faint" style={{ fontSize: 12.5 }}>
           Enter a balance and a risk between 0 and 100%.

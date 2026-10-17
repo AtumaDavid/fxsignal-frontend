@@ -2,7 +2,8 @@
 //|                                              FXSignal-Sync.mq5   |
 //|   Read-only journal sync for FXSignal (EUR/USD and USD/JPY).     |
 //|                                                                  |
-//|   Sends your positions to your FXSignal journal once a minute.   |
+//|   Sends your positions, the live EUR/USD and USD/JPY bid/ask and  |
+//|   your balance/equity to FXSignal once a minute.                 |
 //|   It never opens, modifies or closes a trade.                    |
 //|                                                                  |
 //|   Setup:                                                         |
@@ -14,7 +15,7 @@
 //|      (FXSignal > Settings > MT5 sync) and press OK.              |
 //+------------------------------------------------------------------+
 #property copyright   "FXSignal"
-#property version     "1.00"
+#property version     "1.10"
 #property description "Read-only: sends your EUR/USD and USD/JPY trades to your FXSignal journal. Never opens, changes or closes trades."
 
 input string SyncKey         = "";                                         // Sync key (FXSignal > Settings > MT5 sync)
@@ -74,6 +75,7 @@ string PositionJson(ulong positionId, long offset)
    string   symbol = "";
    long     side = -1;
    double   inVol = 0, inPx = 0, outVol = 0, outPx = 0, sl = 0, tp = 0, profit = 0;
+   double   commission = 0, swap = 0;
    datetime openT = 0, closeT = 0;
    int total = HistoryDealsTotal();
    for(int i = 0; i < total; i++)
@@ -86,7 +88,11 @@ string PositionJson(ulong positionId, long offset)
       double   vol   = HistoryDealGetDouble(t, DEAL_VOLUME);
       double   px    = HistoryDealGetDouble(t, DEAL_PRICE);
       datetime when  = (datetime)HistoryDealGetInteger(t, DEAL_TIME);
-      profit += HistoryDealGetDouble(t, DEAL_PROFIT) + HistoryDealGetDouble(t, DEAL_SWAP) + HistoryDealGetDouble(t, DEAL_COMMISSION);
+      double dealSwap = HistoryDealGetDouble(t, DEAL_SWAP);
+      double dealCommission = HistoryDealGetDouble(t, DEAL_COMMISSION);
+      profit     += HistoryDealGetDouble(t, DEAL_PROFIT) + dealSwap + dealCommission;
+      swap       += dealSwap;
+      commission += dealCommission;
       if(entry == DEAL_ENTRY_IN && (type == DEAL_TYPE_BUY || type == DEAL_TYPE_SELL))
         {
          symbol = HistoryDealGetString(t, DEAL_SYMBOL);
@@ -130,7 +136,9 @@ string PositionJson(ulong positionId, long offset)
    if(outVol > 0)
       j += ",\"closePrice\":" + DoubleToString(outPx, digits) +
            ",\"closeTime\":" + IntegerToString(ToUtc(closeT, offset));
-   j += ",\"profit\":" + DoubleToString(profit, 2) + "}";
+   j += ",\"profit\":" + DoubleToString(profit, 2) +
+        ",\"commission\":" + DoubleToString(commission, 2) +
+        ",\"swap\":" + DoubleToString(swap, 2) + "}";
    return(j);
   }
 
@@ -140,6 +148,33 @@ bool Contains(const ulong &ids[], int n, ulong id)
       if(ids[k] == id)
          return(true);
    return(false);
+  }
+
+//--- Live bid/ask for the wanted symbols in Market Watch, as JSON items.
+string QuotesJson(long offset)
+  {
+   string items = "";
+   int    count = 0;
+   int    total = SymbolsTotal(true);
+   for(int i = 0; i < total && count < 10; i++)
+     {
+      string symbol = SymbolName(i, true);
+      if(!Wanted(symbol))
+         continue;
+      MqlTick tick;
+      if(!SymbolInfoTick(symbol, tick) || tick.bid <= 0 || tick.ask <= 0)
+         continue;
+      int digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
+      if(digits <= 0)
+         digits = 5;
+      items += (count > 0 ? "," : "") +
+               "{\"symbol\":\"" + Esc(symbol) + "\"" +
+               ",\"bid\":" + DoubleToString(tick.bid, digits) +
+               ",\"ask\":" + DoubleToString(tick.ask, digits) +
+               ",\"time\":" + IntegerToString(ToUtc(tick.time, offset)) + "}";
+      count++;
+     }
+   return(items);
   }
 
 void Sync()
@@ -195,7 +230,11 @@ void Sync()
    string body = "{\"account\":\"" + IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN)) + "\"" +
                  ",\"broker\":\"" + Esc(AccountInfoString(ACCOUNT_COMPANY)) + "\"" +
                  ",\"server\":\"" + Esc(AccountInfoString(ACCOUNT_SERVER)) + "\"" +
-                 ",\"version\":\"1.0\"" +
+                 ",\"version\":\"1.1\"" +
+                 ",\"balance\":" + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE), 2) +
+                 ",\"equity\":" + DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY), 2) +
+                 ",\"currency\":\"" + Esc(AccountInfoString(ACCOUNT_CURRENCY)) + "\"" +
+                 ",\"quotes\":[" + QuotesJson(offset) + "]" +
                  ",\"positions\":[" + items + "]}";
    Post(body, count);
   }

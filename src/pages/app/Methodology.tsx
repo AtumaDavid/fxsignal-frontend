@@ -58,8 +58,8 @@ export default function Methodology() {
                   ],
                   [
                     'M15',
-                    'Confirmation',
-                    'Timing: raises or lowers confidence, never sets direction',
+                    'Trigger',
+                    'The entry: a candle closing in the trade direction inside the zone. Never sets direction',
                   ],
                 ].map(([tf, role, decides]) => (
                   <tr key={tf}>
@@ -95,16 +95,38 @@ export default function Methodology() {
         </section>
 
         <section>
-          <h2>2. Levels: H1 execution, at least 1:2</h2>
+          <h2>2. Levels: H1 execution, at least 1:2 after costs</h2>
           <ul>
             <li>
               The entry zone is centred on the current price and sized from H1
-              ATR (8–28 pips wide). Execute inside it on H1, after an M15 candle
-              closes in the trade direction.
+              ATR (8–28 pips wide). The entry fills only after price trades
+              into it and an M15 candle then closes in the trade direction
+              inside it, at that candle's close.
             </li>
             <li>
               The invalidation sits 3 pips beyond the last ten H1 bars of
               structure, and at least 12 pips past the zone.
+            </li>
+            <li>
+              The 2R target is measured after costs: a typical spread plus
+              slippage (EUR/USD 1.2, USD/JPY 1.5 pips) is built into it.
+            </li>
+            <li>
+              <strong>News:</strong> no entry fills from 30 minutes before to
+              30 minutes after a high-impact release for either currency of the
+              pair. The playbook lists those times.
+            </li>
+            <li>
+              <strong>One USD bet at a time:</strong> both pairs are USD trades.
+              A new call on the same USD side as a trade already open or waiting
+              on the other pair is published as Neutral. Long EUR/USD and short
+              USD/JPY are both short USD. After 2R of closed losses in a day
+              (UTC), nothing new is published until the next day.
+            </li>
+            <li>
+              <strong>Spread:</strong> when a live spread is reported (from MT5
+              terminals running the sync add-on) and it is above 2.0 pips on
+              EUR/USD or 2.5 on USD/JPY, no new trade is published.
             </li>
             <li>
               The target is at least <strong>2× the risk</strong>, both measured
@@ -128,8 +150,8 @@ export default function Methodology() {
               When the model review is enabled, a language model may keep the
               direction or downgrade it to Neutral, but never flip it or trade a
               window the engine stood aside on. Its levels go through the same
-              limits; a target closer than 2R is pushed out to 2R, and if that
-              does not fit, the engine's levels are used.
+              limits; a target closer than 2R after costs is pushed out to 2R,
+              and if that does not fit, the engine's levels are used.
             </li>
           </ul>
         </section>
@@ -196,8 +218,12 @@ export default function Methodology() {
           <ol>
             <li>
               No position exists until price trades into the entry zone during
-              the signal's window; fills are taken at its midpoint. No fill in
-              the window means no trade.
+              the signal's window and an M15 candle then closes in the trade
+              direction inside it; the fill is that candle's close. The close
+              must come within four candles of price being in the zone. If the
+              invalidation or TP1 trades first, or no candle confirms in the
+              window, there is no trade. (Signals published before October 2026 filled
+              at the zone midpoint as soon as price traded into the zone.)
             </li>
             <li>
               After the fill, whichever of invalidation or target trades first
@@ -207,7 +233,11 @@ export default function Methodology() {
             <li>
               A moved stop applies from the candle after the target that moved
               it (inside one candle the order of high and low is unknown).
-              Results for the whole position: <strong>−1R</strong> at the stop,{' '}
+              Pips are measured from the real fill, so a confirmed entry that
+              filled above or below the zone's middle costs a little more or
+              less than 1R at the stop. Measured from the middle of the zone,
+              the results for the whole position are: <strong>−1R</strong> at
+              the stop,{' '}
               <strong>+⅓R</strong> when TP1 is booked and the rest returns to
               entry, <strong>+1⅓R</strong> after TP2 with the last third closed
               at TP1, <strong>+2R</strong> when all three targets trade.

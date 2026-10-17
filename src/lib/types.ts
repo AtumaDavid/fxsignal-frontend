@@ -38,7 +38,44 @@ export interface PredictionOutcome {
   evaluatedAt: string | null;
   source: OutcomeSource;
   note: string | null;
+  /** Why it ended without a position or was cancelled (see lib/reasons.ts). */
+  reasonCode?: ReasonCode | null;
+  /** The engine's own entry, once settled. */
+  fillPrice?: number | null;
+  filledAt?: string | null;
 }
+
+export type ReasonCode =
+  | 'CONTEXT_NEUTRAL'
+  | 'H1_AGAINST'
+  | 'STRICT_WINDOW'
+  | 'H1_NOT_REALIGNED'
+  | 'STOP_TOO_WIDE'
+  | 'NO_ZONE'
+  | 'NO_ROOM'
+  | 'USD_EXPOSURE'
+  | 'DAILY_LOSS_LIMIT'
+  | 'WIDE_SPREAD'
+  | 'MODEL_DOWNGRADE'
+  | 'NO_TOUCH'
+  | 'NO_CONFIRMATION'
+  | 'CONFIRMATION_EXPIRED'
+  | 'NEWS_BLACKOUT'
+  | 'STOP_BEFORE_ENTRY'
+  | 'MOVED_AWAY'
+  | 'H1_INVALIDATION'
+  | 'CONTEXT_FLIP'
+  | 'H1_TURNED';
+
+export type LifecycleStage =
+  | 'STAND_ASIDE'
+  | 'WAITING_FOR_ZONE'
+  | 'IN_ZONE'
+  | 'ENTERED'
+  | 'TP1'
+  | 'TP2'
+  | 'CLOSED'
+  | 'VOID';
 
 export interface TimeframeVote {
   timeframe: string;
@@ -63,6 +100,13 @@ export interface LiveProgress {
   tp2At?: string | null;
   /** Where the stop is now: original → entry after TP1 → TP1 after TP2. */
   stopNow?: number | null;
+  /** Absent on responses from before the lifecycle was tracked. */
+  stage?: LifecycleStage;
+  touchedAt?: string | null;
+  fillPrice?: number | null;
+  voidReason?: ReasonCode | null;
+  newsBlockedAt?: string | null;
+  expiredTouches?: number;
 }
 
 export interface NewsRisk {
@@ -73,6 +117,14 @@ export interface NewsRisk {
 }
 
 export interface Prediction {
+  /** How the entry fills: TOUCH (older signals) or on an M15 close. */
+  entryTrigger?: 'TOUCH' | 'M15_CLOSE';
+  /** High-impact news windows (ms) in which no entry fills. */
+  blackouts?: { from: number; to: number; title: string }[];
+  /** Why a Neutral call stood aside. */
+  reasonCode?: ReasonCode | null;
+  /** Rule version it was built with; null on older signals. */
+  strategy?: { version: string; fingerprint: string } | null;
   id: string;
   pairCode: PairCode;
   windowKey: string;
@@ -266,6 +318,16 @@ export interface UserTrade {
   createdAt: string;
   updatedAt: string;
   prediction: Prediction;
+  /** Account currency: from the broker (MT5) or estimated from settings. */
+  commission?: number | null;
+  commissionEstimated?: boolean;
+  swap?: number | null;
+  /** Live spread when the trade was synced. */
+  spreadPips?: number | null;
+  /** The price the signal itself filled at. */
+  signalFillPrice?: number | null;
+  /** + = a worse entry than the signal's fill. */
+  slippagePips?: number | null;
 }
 
 export interface JournalData {
@@ -281,6 +343,13 @@ export interface JournalData {
     netPips: number;
     engineNetPips: number;
     engineScored: number;
+    avgSlippagePips?: number | null;
+    slippageTrades?: number;
+    commission?: number;
+    swap?: number;
+    /** Same closed signals: your pips − the engine's. Negative = execution cost. */
+    executionGapPips?: number | null;
+    executionGapTrades?: number;
   };
   /** Closed trades grouped, best net pips first. */
   byPair?: JournalBreakdown[];
@@ -338,8 +407,23 @@ export type AlertGroup =
   'newSignal' | 'entry' | 'result' | 'checkpoint' | 'myTrades';
 
 export interface AlertPrefs {
-  channels: { email: boolean; push: boolean };
+  channels: {
+    email: boolean;
+    push: boolean;
+    telegram?: boolean;
+    discord?: boolean;
+    webhook?: boolean;
+  };
   events: Record<AlertGroup, boolean>;
+}
+
+export interface AlertDestinations {
+  telegramLinked: boolean;
+  /** Masked: the full URL is a secret and never sent back. */
+  discordWebhookUrl: string | null;
+  webhookUrl: string | null;
+  /** Verify X-FXSignal-Signature (HMAC-SHA256 of the body) with this. */
+  webhookSecret: string | null;
 }
 
 export interface AlertSettings {
@@ -349,6 +433,8 @@ export interface AlertSettings {
   pushAvailable: boolean;
   vapidPublicKey: string | null;
   pushDevices: number;
+  telegramAvailable?: boolean;
+  destinations?: AlertDestinations;
 }
 
 export interface RecapGroup {
@@ -578,6 +664,16 @@ export interface BacktestReport {
     bySession: BacktestGroup[];
     byMonth: BacktestGroup[];
     curve: { at: string; r: number }[];
+    /** Absent on runs from before costs and portfolio rules were added. */
+    portfolioBlocked?: number;
+    costPips?: Record<string, number>;
+    monteCarlo?: {
+      runs: number;
+      netR: { p5: number; p50: number; p95: number };
+      probProfit: number;
+      maxDrawdownR: { p50: number; p95: number };
+      longestLosingStreak: { p50: number; p95: number };
+    } | null;
   };
   trades: BacktestTrade[];
 }
@@ -604,5 +700,87 @@ export interface Mt5Status {
     lastBroker: string | null;
     lastPositions: number | null;
     lastMatched: number | null;
+    /** From EA 1.1+. */
+    balance?: number | null;
+    equity?: number | null;
+    currency?: string | null;
+    peakEquity?: number | null;
   } | null;
+}
+
+export interface LiveSpreadInfo {
+  pairCode: PairCode;
+  live: {
+    spreadPips: number;
+    at: string;
+    samples: number;
+    wide: boolean;
+  } | null;
+  maxSpreadPips: number;
+  assumedCostPips: number;
+}
+
+export interface Mt5Account {
+  equity?: number;
+  peak?: number;
+  drawdownPct?: number;
+  paused?: boolean;
+  currency: string | null;
+  balance: number | null;
+  syncedAt: string | null;
+}
+
+export interface AnalyticsGroup {
+  key: string;
+  trades: number;
+  wins: number;
+  losses: number;
+  winRate: number | null;
+  netR: number;
+  avgR: number;
+  avgRLow: number;
+  avgRHigh: number;
+  maxDrawdownR: number;
+  inconclusive: boolean;
+}
+
+export interface AnalyticsReport {
+  source: 'live' | 'backtest';
+  dimension: string;
+  dimensions: { key: string; label: string }[];
+  minSample: number;
+  total: number;
+  note: string;
+  groups: AnalyticsGroup[];
+}
+
+export interface ReplayFrame {
+  pair: PairCode;
+  at: number;
+  window: { label: string; start: string; end: string } | null;
+  candles: { time: number; open: number; high: number; low: number; close: number }[];
+  signal: {
+    direction: Direction;
+    confidence: number;
+    entryLow: number;
+    entryHigh: number;
+    stop: number;
+    tp1: number;
+    tp2: number;
+    tp3: number | null;
+    reasonCode: ReasonCode | null;
+    notes: string[];
+    entryTrigger: string;
+    blackouts: { from: number; to: number; title: string }[];
+  } | null;
+  progress: {
+    state: string;
+    stage: LifecycleStage;
+    touchedAt: number | null;
+    filledAt: number | null;
+    fillPrice: number | null;
+    pips: number | null;
+    tpHits: number;
+  } | null;
+  outcome: { status: string; pips: number | null; closedAt: string | null; note: string } | null;
 }

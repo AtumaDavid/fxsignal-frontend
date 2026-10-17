@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import {
   LiveStatus,
@@ -22,7 +22,22 @@ import {
   tzLabel,
 } from '../lib/format';
 import { usePrefs } from '../lib/prefs';
-import type { Prediction } from '../lib/types';
+import { executionApi } from '../lib/api';
+import type { LiveSpreadInfo, Prediction } from '../lib/types';
+
+/** The live spread for a pair (MT5 terminals running the sync add-on), or null. */
+function useLiveSpread(pair: string): LiveSpreadInfo | null {
+  const [info, setInfo] = useState<LiveSpreadInfo | null>(null);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    executionApi
+      .get(ctrl.signal)
+      .then((r) => setInfo(r.spreads.find((s) => s.pairCode === pair) ?? null))
+      .catch(() => undefined);
+    return () => ctrl.abort();
+  }, [pair]);
+  return info;
+}
 
 const DRAWER_HISTORY_KEY = '__fxsignalDrawer';
 
@@ -83,6 +98,7 @@ export function SignalDetail({
   wide?: boolean;
 }) {
   const { timeZone } = usePrefs();
+  const spread = useLiveSpread(prediction.pairCode);
   const p = prediction;
   const outcome = p.outcome;
   const tradeable = p.direction !== 'NEUTRAL' && !p.continuesId;
@@ -205,6 +221,32 @@ export function SignalDetail({
             <div>
               <span>Model</span>
               <strong>{p.modelName ?? '—'}</strong>
+            </div>
+            <div>
+              <span data-tip="The rule version this signal was built with. Results are only comparable within the same version and fingerprint.">
+                Rules
+              </span>
+              <strong>
+                {p.strategy
+                  ? `${p.strategy.version} · ${p.strategy.fingerprint}`
+                  : 'unversioned'}
+              </strong>
+            </div>
+            <div>
+              <span
+                data-tip={
+                  spread
+                    ? `Median live spread from MT5 terminals running the sync add-on. Above ${spread.maxSpreadPips} pips no new trade is published; the engine and backtest assume ${spread.assumedCostPips} pips of spread + slippage.`
+                    : 'Needs an MT5 terminal running the sync add-on 1.1+.'
+                }
+              >
+                Live spread
+              </span>
+              <strong className={spread?.live?.wide ? 'down' : ''}>
+                {spread?.live
+                  ? `${spread.live.spreadPips.toFixed(1)}p${spread.live.wide ? ' (wide)' : ''}`
+                  : '—'}
+              </strong>
             </div>
             {outcome && outcome.status !== 'PENDING' && (
               <>

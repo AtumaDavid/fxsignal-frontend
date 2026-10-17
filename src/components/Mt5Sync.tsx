@@ -96,7 +96,7 @@ export function Mt5Sync() {
             <span>
               {status.linked && link
                 ? link.lastSyncAt
-                  ? `Last sync ${relative(link.lastSyncAt, now)}${link.lastAccount ? ` · account ${link.lastAccount}` : ''}${link.lastBroker ? ` · ${link.lastBroker}` : ''} · ${link.lastMatched ?? 0} of ${link.lastPositions ?? 0} positions matched to signals`
+                  ? `Last sync ${relative(link.lastSyncAt, now)}${link.lastAccount ? ` · account ${link.lastAccount}` : ''}${link.lastBroker ? ` · ${link.lastBroker}` : ''} · ${link.lastMatched ?? 0} of ${link.lastPositions ?? 0} positions matched to signals${link.equity != null ? ` · equity ${link.equity.toFixed(2)} ${link.currency ?? ''}${link.peakEquity ? ` (peak ${link.peakEquity.toFixed(2)})` : ''}` : ' · update the EA to 1.1 for live spreads and equity'}`
                   : `Key …${link.tokenHint} is ready. Attach the EA in MT5 (steps below).`
                 : 'Your journal fills itself from your real MT5 trades: entry, exit and lot size, matched to the signal you followed. Read-only — FXSignal can never place or change a trade.'}
             </span>

@@ -58,9 +58,30 @@ export function SignalChart({
     },
   ];
   const expired = new Date(p.expiresAt).getTime() <= Date.now();
+  const long = p.direction === 'LONG';
   const events: ChartEvent[] = [
     { at: p.validFrom, label: 'Published', tone: 'ink' },
   ];
+  // The trade's life on the tape: zone touch, the confirming candle (entry),
+  // TP1/TP2, and the news windows in which no entry could fill.
+  const live = p.live;
+  const filledAt = live?.filledAt ?? p.outcome?.filledAt ?? null;
+  if (live?.touchedAt && live.touchedAt !== filledAt)
+    events.push({ at: live.touchedAt, label: 'In zone', tone: 'muted', position: 'inBar', shape: 'circle' });
+  if (filledAt)
+    events.push({
+      at: filledAt,
+      label: p.entryTrigger === 'M15_CLOSE' ? 'Confirmed · entry' : 'Entry',
+      tone: 'ink',
+      position: long ? 'belowBar' : 'aboveBar',
+      shape: long ? 'arrowUp' : 'arrowDown',
+    });
+  if (live?.tp1At) events.push({ at: live.tp1At, label: 'TP1', tone: 'up', position: long ? 'aboveBar' : 'belowBar', shape: 'circle' });
+  if (live?.tp2At) events.push({ at: live.tp2At, label: 'TP2', tone: 'up', position: long ? 'aboveBar' : 'belowBar', shape: 'circle' });
+  if (live?.newsBlockedAt)
+    events.push({ at: live.newsBlockedAt, label: 'Blocked: news', tone: 'muted', shape: 'square' });
+  for (const b of p.blackouts ?? [])
+    events.push({ at: new Date(b.from).toISOString(), label: 'News: no entry', tone: 'muted', shape: 'square' });
   const status = p.outcome?.status ?? 'PENDING';
   const checkpoint = status === 'CANCELLED' || status === 'CLOSED_EARLY';
   if (checkpoint && p.outcome?.evaluatedAt) {

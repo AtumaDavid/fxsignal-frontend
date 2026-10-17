@@ -215,21 +215,21 @@ function Method() {
     {
       n: '01',
       title: 'Read the structure',
-      copy: 'EMA 20/50/200, RSI, ATR and swing structure on four timeframes, each with one job. The daily and 4-hour set the direction; the 1-hour must agree before anything is executed; the 15-minute only confirms the timing.',
+      copy: 'EMA 20/50/200, RSI, ATR and swing structure on four timeframes, each with one job. The daily and 4-hour set the direction; the 1-hour must agree before anything is executed; the 15-minute only triggers the entry.',
       list: [
         'context · daily 55 / H4 45',
         'execution · H1 must not oppose',
-        'confirmation · M15 adjusts confidence',
+        'trigger · M15 close confirms the entry',
       ],
     },
     {
       n: '02',
       title: 'Commit to levels',
-      copy: 'The entry zone and stop come from H1 volatility and the last ten H1 bars of structure. The target is set at least twice the risk away. If the structure needs a stop too wide for 1:2, there is no trade that window.',
+      copy: 'The entry zone and stop come from H1 volatility and the last ten H1 bars of structure. The target is set at least twice the risk away after spread and slippage. No entries into high-impact news, and never the same USD bet on both pairs.',
       list: [
         'entry zone 8–28 pips (H1 ATR)',
         'stop beyond H1 structure, ≤ 60 pips',
-        'target ≥ 2R, always',
+        'target ≥ 2R after costs, always',
       ],
     },
     {
@@ -237,7 +237,7 @@ function Method() {
       title: 'Score it honestly',
       copy: 'Each call is replayed candle by candle. No fill in its window means no trade; a filled trade is followed until its target or stop trades, even after newer signals appear. If stop and target share a candle, the stop counts first.',
       list: [
-        'fills at zone midpoint',
+        'fills on a confirming M15 close',
         'followed to target or stop',
         'signed pips, kept forever',
       ],

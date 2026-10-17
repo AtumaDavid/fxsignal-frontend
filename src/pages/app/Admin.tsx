@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AnalyticsPanel, ReplayPanel } from '../../components/ResearchPanels';
 import { Navigate } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
 import { OutcomeTag } from '../../components/Market';
@@ -577,7 +578,7 @@ function BacktestPanel() {
             label="Months"
             value={months}
             onChange={setMonths}
-            options={['1', '3', '6', '9', '12'].map((m) => ({
+            options={['1', '3', '6', '9', '12', '18', '24'].map((m) => ({
               value: m,
               label: `${m} month${m === '1' ? '' : 's'}`,
             }))}
@@ -1276,6 +1277,8 @@ export default function Admin() {
           <SignalsPanel />
 
           <BacktestPanel />
+          <AnalyticsPanel />
+          <ReplayPanel />
 
           <UsersPanel />
         </div>

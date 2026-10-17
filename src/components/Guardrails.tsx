@@ -7,20 +7,20 @@ import { Select } from './ui/Select';
 import { Spinner } from './ui/Empty';
 import { useDashboard } from '../lib/dashboard';
 import {
-  todayRisk,
+  accountRisk,
   useRiskPrefs,
+  type AccountRisk,
   type RiskPrefs,
-  type TodayRisk,
 } from '../lib/guardrails';
 import { useJournal } from '../lib/journal';
 import { usePrefs } from '../lib/prefs';
 
-/** Today's guardrail status, or null when guardrails are off. */
+/** Guardrail status (today, week, exposure, drawdown), or null when off. */
 export function useTodayRisk(): {
-  risk: TodayRisk | null;
+  risk: AccountRisk | null;
   prefs: RiskPrefs | null;
 } {
-  const { prefs } = useRiskPrefs();
+  const { prefs, mt5 } = useRiskPrefs();
   const { data: journal } = useJournal();
   const { data } = useDashboard();
   const { timeZone } = usePrefs();
@@ -28,7 +28,7 @@ export function useTodayRisk(): {
   const priceOf = (pair: string) =>
     data?.prices.find((p) => p.pairCode === pair)?.price ?? null;
   return {
-    risk: todayRisk(journal.trades, prefs, priceOf, timeZone),
+    risk: accountRisk(journal.trades, prefs, priceOf, timeZone, mt5),
     prefs,
   };
 }
@@ -44,11 +44,27 @@ export function GuardrailBanner() {
   let tone: 'stop' | 'warn' | null = null;
   let title = '';
   let body = '';
-  if (risk.lossLimitHit) {
+  const heavy = risk.exposure.filter((e) => e.overLimit);
+  if (risk.drawdownHit || risk.weekLimitHit) {
+    tone = 'stop';
+    title = `Trading paused: ${risk.pauseReason}`;
+    body = risk.drawdownHit
+      ? `Consider stopping until you have reviewed the losing trades.${risk.drawdownSource === 'mt5' ? ' New-signal alerts are paused while your MT5 equity is past the limit.' : ''}`
+      : 'Consider stopping until next week. The setups will still be there.';
+  } else if (risk.lossLimitHit) {
     tone = 'stop';
     title = `You've lost ${pct}% today — your daily limit is ${prefs.dailyLossPct}%`;
     body =
       'Consider stopping for today. The next session will still be there tomorrow.';
+  } else if (heavy.length > 0) {
+    tone = 'warn';
+    title = `${heavy.map((e) => `${e.currency} ${e.netLots > 0 ? '+' : ''}${e.netLots} lots`).join(', ')} — above your ${prefs.maxCurrencyLots}-lot limit`;
+    body =
+      'Your open trades stack the same currency. Consider closing or reducing one before adding more.';
+  } else if (risk.openLimitHit) {
+    tone = 'warn';
+    title = `${risk.openPositions} open trades — your limit is ${prefs.maxOpenPositions}`;
+    body = 'Consider managing what is open before adding another trade.';
   } else if (risk.tradeLimitHit) {
     tone = 'warn';
     title = `You've taken ${risk.tradesToday} trade${risk.tradesToday === 1 ? '' : 's'} today — your limit is ${prefs.maxTradesPerDay}`;
@@ -137,6 +153,12 @@ export function GuardrailSettings() {
     maxTradesPerDay: string;
     balance: string;
     currency: Currency;
+    weeklyLossPct: string;
+    maxOpenPositions: string;
+    maxCurrencyLots: string;
+    drawdownPausePct: string;
+    maxRiskPerTradePct: string;
+    commissionPerLot: string;
   } | null>(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<{
@@ -154,6 +176,12 @@ export function GuardrailSettings() {
       // Start from the position size calculator's balance.
       balance: prefs.balance?.toString() ?? sizer.balance,
       currency: prefs.balance ? prefs.currency : sizer.currency,
+      weeklyLossPct: prefs.weeklyLossPct?.toString() ?? '',
+      maxOpenPositions: prefs.maxOpenPositions?.toString() ?? '',
+      maxCurrencyLots: prefs.maxCurrencyLots?.toString() ?? '',
+      drawdownPausePct: prefs.drawdownPausePct?.toString() ?? '',
+      maxRiskPerTradePct: prefs.maxRiskPerTradePct?.toString() ?? '',
+      commissionPerLot: prefs.commissionPerLot?.toString() ?? '',
     });
   }, [prefs, form]);
 
@@ -169,17 +197,34 @@ export function GuardrailSettings() {
       maxTradesPerDay: num(next.maxTradesPerDay),
       balance: num(next.balance),
       currency: next.currency,
+      weeklyLossPct: num(next.weeklyLossPct),
+      maxOpenPositions: num(next.maxOpenPositions),
+      maxCurrencyLots: num(next.maxCurrencyLots),
+      drawdownPausePct: num(next.drawdownPausePct),
+      maxRiskPerTradePct: num(next.maxRiskPerTradePct),
+      commissionPerLot: num(next.commissionPerLot),
     };
     if (
-      [values.dailyLossPct, values.maxTradesPerDay, values.balance].some(
-        (v) => v !== null && (!Number.isFinite(v) || v <= 0)
-      )
+      [
+        values.dailyLossPct,
+        values.maxTradesPerDay,
+        values.balance,
+        values.weeklyLossPct,
+        values.maxOpenPositions,
+        values.maxCurrencyLots,
+        values.drawdownPausePct,
+        values.maxRiskPerTradePct,
+      ].some((v) => v != null && (!Number.isFinite(v) || v <= 0)) ||
+      (values.commissionPerLot != null &&
+        (!Number.isFinite(values.commissionPerLot) || values.commissionPerLot < 0))
     ) {
       setNotice({ tone: 'error', text: 'Use positive numbers.' });
       return;
     }
     if (values.maxTradesPerDay !== null)
       values.maxTradesPerDay = Math.round(values.maxTradesPerDay);
+    if (values.maxOpenPositions != null)
+      values.maxOpenPositions = Math.round(values.maxOpenPositions);
     setSaving(true);
     setNotice(null);
     try {
@@ -273,11 +318,36 @@ export function GuardrailSettings() {
             size="md"
           />
         </div>
+        {(
+          [
+            ['weeklyLossPct', 'Weekly loss limit (% of account)', '6', 'decimal'],
+            ['drawdownPausePct', 'Pause after drawdown (% from peak)', '10', 'decimal'],
+            ['maxRiskPerTradePct', 'Max risk per trade (%)', '2', 'decimal'],
+            ['maxOpenPositions', 'Max open trades', '2', 'numeric'],
+            ['maxCurrencyLots', 'Max net lots per currency (USD, EUR, JPY)', 'none', 'decimal'],
+            ['commissionPerLot', `Commission per lot, round turn (${form.currency})`, 'none', 'decimal'],
+          ] as const
+        ).map(([key, label, placeholder, mode]) => (
+          <label className="field" key={key}>
+            <span>{label}</span>
+            <input
+              className="input"
+              inputMode={mode}
+              value={form[key]}
+              onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+              placeholder={placeholder}
+            />
+          </label>
+        ))}
       </div>
       <p className="faint" style={{ fontSize: 12.5 }}>
         Counted from your journal, in your display time zone: trades logged
-        today, and the result of trades closed today. It only warns — it never
-        blocks a trade.
+        today, results closed today and this week, open trades and their
+        currency exposure. Drawdown uses your MT5 equity when the sync add-on
+        runs, otherwise your journal's last 30 days. It only warns — it never
+        blocks a trade — but past the drawdown limit with MT5 linked, new-signal
+        alerts pause. Commission per lot is applied to hand-logged trades;
+        MT5 trades use the broker's own.
         {risk &&
           ` Today: ${risk.tradesToday} trade${risk.tradesToday === 1 ? '' : 's'}, ${risk.pnl >= 0 ? '+' : '−'}${money(Math.abs(risk.pnl), form.currency)}.`}
       </p>
@@ -287,5 +357,49 @@ export function GuardrailSettings() {
         </button>
       </div>
     </form>
+  );
+}
+
+/** Open trades by currency: net lots long (+) or short (−) USD, EUR and JPY. */
+export function ExposurePanel() {
+  const { risk, prefs } = useTodayRisk();
+  if (!risk || !prefs) return null;
+  return (
+    <section className="panel exposure">
+      <div className="panel-head">
+        <div>
+          <h2>Exposure</h2>
+          <p>
+            {risk.openPositions} open trade{risk.openPositions === 1 ? '' : 's'}
+            {prefs.maxOpenPositions != null && ` · limit ${prefs.maxOpenPositions}`}
+            {risk.drawdownPct !== null &&
+              ` · drawdown ${risk.drawdownPct.toFixed(1)}% (${risk.drawdownSource === 'mt5' ? 'MT5 equity' : 'journal, 30 days'})`}
+          </p>
+        </div>
+      </div>
+      <div className="exposure-grid">
+        {risk.exposure.map((e) => (
+          <div key={e.currency} className={`exposure-cell ${e.overLimit ? 'over' : ''}`}>
+            <span>{e.currency}</span>
+            <strong className={e.netLots > 0 ? 'up' : e.netLots < 0 ? 'down' : ''}>
+              {e.netLots > 0 ? '+' : e.netLots < 0 ? '−' : ''}
+              {Math.abs(e.netLots).toFixed(2)} lots
+            </strong>
+            <em>
+              {e.netLots === 0
+                ? 'flat'
+                : e.netLots > 0
+                  ? 'long'
+                  : 'short'}
+              {e.positions > 0 && ` · ${e.positions} trade${e.positions === 1 ? '' : 's'}`}
+            </em>
+          </div>
+        ))}
+      </div>
+      <p className="faint" style={{ fontSize: 12, margin: '0 18px 14px' }}>
+        Long EUR/USD is long EUR and short USD; long USD/JPY is long USD and
+        short JPY. Two trades on the same side of USD are one bigger USD bet.
+      </p>
+    </section>
   );
 }

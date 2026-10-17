@@ -17,7 +17,14 @@ import {
   type UTCTimestamp,
 } from 'lightweight-charts';
 import { Empty } from './ui/Empty';
-import { getCandles, type CandleSeries, type ChartTimeframe } from '../lib/api';
+import {
+  getCandles,
+  getZones,
+  type CandleSeries,
+  type ChartTimeframe,
+  type ChartZone,
+  type ZoneMapResponse,
+} from '../lib/api';
 import { dateTime, price, tzLabel } from '../lib/format';
 import { EMA_COLORS, EMA_PERIODS, ema, rsiSeries } from '../lib/indicators';
 import { usePrefs } from '../lib/prefs';
@@ -39,6 +46,44 @@ export interface ChartEvent {
   at: string;
   label: string;
   tone?: LevelTone;
+  /** Default: an arrow above the bar. */
+  position?: 'aboveBar' | 'belowBar' | 'inBar';
+  shape?: 'arrowDown' | 'arrowUp' | 'circle' | 'square';
+}
+
+const ZONE_COLORS = {
+  support: 'rgba(47, 191, 133, 0.55)',
+  resistance: 'rgba(239, 90, 95, 0.55)',
+  context: 'rgba(160, 160, 168, 0.5)',
+} as const;
+
+const KIND_SHORT: Record<string, string> = {
+  PREV_DAY_HIGH: 'PDH',
+  PREV_DAY_LOW: 'PDL',
+  PREV_WEEK_HIGH: 'PWH',
+  PREV_WEEK_LOW: 'PWL',
+  ASIA_HIGH: 'Asia H',
+  ASIA_LOW: 'Asia L',
+  PIVOT_HIGH: 'S/R',
+  PIVOT_LOW: 'S/R',
+  DEMAND: 'Demand',
+  SUPPLY: 'Supply',
+  BULLISH_OB: 'OB',
+  BEARISH_OB: 'OB',
+};
+const TF_SHORT: Record<string, string> = {
+  WEEKLY: 'W',
+  DAILY: 'D',
+  H4: 'H4',
+  H1: 'H1',
+  SESSION: '',
+};
+
+/** "D S/R·PDL" — the strongest timeframe, then up to two kinds. */
+function zoneTitle(z: ChartZone) {
+  const tf = ['WEEKLY', 'DAILY', 'H4', 'H1', 'SESSION'].find((t) => z.timeframes.includes(t));
+  const kinds = [...new Set(z.kinds.map((k) => KIND_SHORT[k] ?? k))].slice(0, 2);
+  return `${tf ? TF_SHORT[tf] : ''} ${kinds.join('·')}`.trim();
 }
 
 const COLORS: Record<LevelTone, string> = {
@@ -57,14 +102,14 @@ const LINE_STYLE = {
 const RSI_PANE_HEIGHT = 92;
 const INDICATOR_PREF_KEY = 'fxsignal_chart_indicators';
 
-function readIndicatorPref(): { ema: boolean; rsi: boolean } {
+function readIndicatorPref(): { ema: boolean; rsi: boolean; zones: boolean } {
   try {
     const raw = localStorage.getItem(INDICATOR_PREF_KEY);
-    if (raw) return { ema: true, rsi: true, ...JSON.parse(raw) };
+    if (raw) return { ema: true, rsi: true, zones: false, ...JSON.parse(raw) };
   } catch {
     // Defaults below.
   }
-  return { ema: true, rsi: true };
+  return { ema: true, rsi: true, zones: false };
 }
 
 const TF_LABEL: Record<ChartTimeframe, string> = {
@@ -114,7 +159,7 @@ export function PriceChart({
   const [show, setShow] = useState(readIndicatorPref);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
-  const toggle = (key: 'ema' | 'rsi') =>
+  const toggle = (key: 'ema' | 'rsi' | 'zones') =>
     setShow((current) => {
       const next = { ...current, [key]: !current[key] };
       try {
@@ -130,6 +175,8 @@ export function PriceChart({
   const candlesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const linesRef = useRef<IPriceLine[]>([]);
+  const zoneLinesRef = useRef<IPriceLine[]>([]);
+  const [zoneMap, setZoneMap] = useState<ZoneMapResponse | null>(null);
   const emaRefs = useRef(new Map<number, ISeriesApi<'Line'>>());
   const rsiRef = useRef<ISeriesApi<'Line'> | null>(null);
   const timeIndex = useRef(new Map<number, number>());
@@ -164,6 +211,57 @@ export function PriceChart({
   }, [pair, timeframe]);
 
   const hasData = (series?.candles.length ?? 0) > 0;
+
+  // The engine's zone map, fetched only when the overlay is switched on.
+  useEffect(() => {
+    if (!show.zones) return;
+    let cancelled = false;
+    getZones(pair)
+      .then((next) => !cancelled && setZoneMap(next))
+      .catch(() => !cancelled && setZoneMap(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [pair, show.zones]);
+
+  // Zones as dotted price lines: the edge facing price is labelled. Only
+  // zones inside the loaded candles' range are drawn, to keep it readable.
+  useEffect(() => {
+    const candles = candlesRef.current;
+    if (!candles) return;
+    for (const line of zoneLinesRef.current) candles.removePriceLine(line);
+    zoneLinesRef.current = [];
+    if (!show.zones || !zoneMap || !series || series.candles.length === 0) return;
+    const recent = series.candles.slice(-150);
+    const lo = Math.min(...recent.map((c) => c.low));
+    const hi = Math.max(...recent.map((c) => c.high));
+    const line = (price: number, color: string, title: string) =>
+      candles.createPriceLine({
+        price,
+        color,
+        lineWidth: 1,
+        lineStyle: LineStyle.Dotted,
+        axisLabelVisible: title !== '',
+        title,
+      });
+    for (const z of zoneMap.zones) {
+      if (z.high < lo || z.low > hi) continue;
+      if (!z.higherTimeframe && !z.kinds.some((k) => k.endsWith('_OB'))) continue;
+      const color = ZONE_COLORS[z.role];
+      const title = zoneTitle(z);
+      const near = z.role === 'support' ? z.high : z.low;
+      const far = z.role === 'support' ? z.low : z.high;
+      zoneLinesRef.current.push(line(near, color, title), line(far, color, ''));
+    }
+    if (zoneMap.monthly) {
+      for (const [price, title] of [
+        [zoneMap.monthly.high, 'PMH'],
+        [zoneMap.monthly.low, 'PML'],
+      ] as const)
+        if (price >= lo && price <= hi)
+          zoneLinesRef.current.push(line(price, ZONE_COLORS.context, title));
+    }
+  }, [show.zones, zoneMap, series, hasData]);
 
   // Create the chart once there is something to draw.
   useEffect(() => {
@@ -237,6 +335,7 @@ export function PriceChart({
       candlesRef.current = null;
       markersRef.current = null;
       linesRef.current = [];
+      zoneLinesRef.current = [];
     };
   }, [hasData, pair]);
 
@@ -298,8 +397,8 @@ export function PriceChart({
         if (!bar) return null;
         return {
           time: shift(bar.time, local) as UTCTimestamp,
-          position: 'aboveBar' as const,
-          shape: 'arrowDown' as const,
+          position: event.position ?? ('aboveBar' as const),
+          shape: event.shape ?? ('arrowDown' as const),
           color: COLORS[event.tone ?? 'muted'],
           text: event.label,
         };
@@ -466,6 +565,15 @@ export function PriceChart({
                 </span>
               );
             })}
+          <span className="pchart-ind-sep" />
+          <button
+            className="pchart-toggle"
+            aria-pressed={show.zones}
+            onClick={() => toggle('zones')}
+            data-tip="The engine's zones: support/resistance (S/R), previous day/week/month highs and lows (PDH/PDL, PWH/PWL, PMH/PML), Asia range, demand/supply and H1 order blocks (OB). Green below price, red above."
+          >
+            Zones
+          </button>
           <span className="pchart-ind-sep" />
           <button
             className="pchart-toggle"

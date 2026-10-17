@@ -1,5 +1,6 @@
 import { price, signedPips } from './format';
 import { tradeTargets } from './targets';
+import { reasonLabel } from './reasons';
 import type { Prediction } from './types';
 
 export type StepTone = 'wait' | 'act' | 'hold' | 'done' | 'skip' | 'exit';
@@ -76,8 +77,8 @@ export function nextStep(p: Prediction, now = Date.now()): NextStep {
     return o.movementPips === null
       ? {
           tone: 'skip',
-          title: 'No trade',
-          detail: 'The entry zone was never reached in its window.',
+          title: o.reasonCode ? `No trade — ${reasonLabel(o.reasonCode)!.toLowerCase()}` : 'No trade',
+          detail: o.note ?? 'The entry zone was never reached in its window.',
         }
       : {
           tone: 'done',
@@ -94,7 +95,9 @@ export function nextStep(p: Prediction, now = Date.now()): NextStep {
   if (p.direction === 'NEUTRAL')
     return {
       tone: 'skip',
-      title: 'No trade this window',
+      title: p.reasonCode
+        ? `No trade this window — ${reasonLabel(p.reasonCode)!.toLowerCase()}`
+        : 'No trade this window',
       detail: p.factors[0] ?? 'The timeframes do not line up. Stand aside.',
     };
 
@@ -158,6 +161,22 @@ export function nextStep(p: Prediction, now = Date.now()): NextStep {
       tone: 'skip',
       title: 'Window closed',
       detail: 'This signal is being settled.',
+    };
+
+  if (live?.stage === 'VOID')
+    return {
+      tone: 'skip',
+      title: `Skip this one — ${reasonLabel(live.voidReason)?.toLowerCase() ?? 'setup void'}`,
+      detail:
+        live.voidReason === 'MOVED_AWAY'
+          ? `Price reached TP1 before any confirmation. Don't chase it.`
+          : `The stop ${stop} traded before any confirmation. Don't enter.`,
+    };
+  if (live?.stage === 'IN_ZONE')
+    return {
+      tone: 'act',
+      title: `In the zone — wait for the M15 close`,
+      detail: `Price is in ${zone}. ${long ? 'Buy' : 'Sell'} only after a 15-minute candle closes ${long ? 'up' : 'down'} inside the zone. Stop ${stop}, ${targets}.`,
     };
 
   return {

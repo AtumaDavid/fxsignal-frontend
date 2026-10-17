@@ -12,6 +12,7 @@ import {
   useNow,
 } from '../lib/format';
 import { usePrefs } from '../lib/prefs';
+import { LIFECYCLE, reasonLabel } from '../lib/reasons';
 import { tradeTargets } from '../lib/targets';
 import type { LiveProgress, Prediction, TimeframeVote } from '../lib/types';
 
@@ -240,7 +241,15 @@ export function LiveStatus({
   let headline: string;
   let detail: string;
   let tone: 'up' | 'down' | 'flat' | '' = '';
-  if (live.state === 'waiting') {
+  if (live.state === 'waiting' && live.stage === 'VOID') {
+    headline = 'Setup void';
+    detail = `${reasonLabel(live.voidReason) ?? ''} — no entry`;
+  } else if (live.state === 'waiting' && live.stage === 'IN_ZONE') {
+    headline = 'In the zone';
+    detail = `Waiting for an M15 candle to close ${p.direction === 'LONG' ? 'up' : 'down'} inside it${
+      live.touchedAt ? ` · touched ${time(live.touchedAt, timeZone)}` : ''
+    }`;
+  } else if (live.state === 'waiting') {
     const last = live.lastPrice;
     const distance =
       last === null
@@ -329,6 +338,81 @@ export function LiveStatus({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Where a trade signal is in its life: waiting for the zone → in the zone
+ * (waiting for the M15 confirmation) → entered → TP1 → TP2 → closed. A setup
+ * that died before entry shows why.
+ */
+export function Lifecycle({ prediction }: { prediction: Prediction }) {
+  const p = prediction;
+  const o = p.outcome;
+  const live = p.live;
+  if (p.direction === 'NEUTRAL' || p.continuesId) return null;
+  const noPosition =
+    o && o.status !== 'PENDING' && o.movementPips === null
+      ? (reasonLabel(o.reasonCode) ??
+        (o.status === 'CANCELLED' ? 'Cancelled before entry' : 'No position'))
+      : null;
+  const voided = live?.stage === 'VOID' ? reasonLabel(live.voidReason) : null;
+  const stopped = live?.state === 'stopped' || o?.status === 'MISSED';
+  const stage =
+    live?.stage ??
+    (o && o.status !== 'PENDING' ? 'CLOSED' : 'WAITING_FOR_ZONE');
+  const current = LIFECYCLE.findIndex((s) => s.stage === stage);
+  const ended = noPosition ?? voided;
+  return (
+    <ol className="lifecycle" aria-label="Trade lifecycle">
+      {LIFECYCLE.map((step, i) => {
+        const state = ended
+          ? i === 0
+            ? 'done'
+            : 'off'
+          : i < current
+            ? 'done'
+            : i === current
+              ? 'now'
+              : 'off';
+        const label =
+          step.stage === 'CLOSED' && stopped && i === current
+            ? 'Stopped'
+            : step.label;
+        return (
+          <li key={step.stage} className={`lifecycle-step ${state}`}>
+            <span className="lifecycle-dot" aria-hidden="true" />
+            <span>{label}</span>
+          </li>
+        );
+      })}
+      {ended && (
+        <li className="lifecycle-step ended">
+          <span className="lifecycle-dot" aria-hidden="true" />
+          <span>{ended}</span>
+        </li>
+      )}
+    </ol>
+  );
+}
+
+/** Times inside the window when no entry may fill (high-impact news). */
+export function NoEntryWindows({ prediction }: { prediction: Prediction }) {
+  const { timeZone } = usePrefs();
+  const windows = prediction.blackouts ?? [];
+  if (windows.length === 0 || prediction.direction === 'NEUTRAL') return null;
+  return (
+    <p className="no-entry" role="note">
+      <Icon name="clock" size={13} />
+      No entry{' '}
+      {windows
+        .map(
+          (w) =>
+            `${time(new Date(w.from).toISOString(), timeZone)}–${time(new Date(w.to).toISOString(), timeZone)}`
+        )
+        .join(', ')}{' '}
+      {tzLabel(timeZone)} ({windows.map((w) => w.title).join(', ')})
+    </p>
   );
 }
 
@@ -486,7 +570,9 @@ export function SignalTicket({
     p.live &&
     (p.live.state === 'running' ||
       p.live.state === 'target' ||
-      p.live.state === 'stopped');
+      p.live.state === 'stopped' ||
+      p.live.stage === 'IN_ZONE' ||
+      p.live.stage === 'VOID');
 
   return (
     <article className="ticket">
@@ -518,13 +604,20 @@ export function SignalTicket({
               {p.carried.reconfirmed ? 'Still valid' : 'Not re-confirmed'}
             </span>
           )}
+          {p.direction === 'NEUTRAL' && p.reasonCode && (
+            <span className="tag" data-tip="Why no trade was published this window.">
+              {reasonLabel(p.reasonCode)}
+            </span>
+          )}
           <div className={`ticket-direction ${tone}`}>{callLabel(p)}</div>
         </div>
       </div>
 
       <div className="ticket-body">
         <NextStepBox prediction={p} />
+        {tradeable && <Lifecycle prediction={p} />}
         {!finished && <NewsWarning prediction={p} />}
+        {!finished && <NoEntryWindows prediction={p} />}
         {showProgress && !finished && (
           <LiveStatus prediction={p} live={p.live!} />
         )}

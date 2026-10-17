@@ -4439,3 +4439,151 @@ a[data-tip],
 .content {
   padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
 }
+
+/* ---- Trade lifecycle stepper ---------------------------------------------- */
+.lifecycle {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.lifecycle-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.lifecycle-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid var(--line-heavy);
+}
+.lifecycle-step.done {
+  color: var(--text-2);
+}
+.lifecycle-step.done .lifecycle-dot {
+  background: var(--text-3);
+  border-color: var(--text-3);
+}
+.lifecycle-step.now {
+  color: var(--text);
+  font-weight: 500;
+}
+.lifecycle-step.now .lifecycle-dot {
+  background: var(--up);
+  border-color: var(--up);
+  box-shadow: 0 0 0 3px var(--up-soft);
+}
+.lifecycle-step.ended {
+  color: var(--flat-ink);
+}
+.lifecycle-step.ended .lifecycle-dot {
+  background: var(--flat);
+  border-color: var(--flat);
+}
+.no-entry {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--flat-ink);
+}
+
+/* ---- Currency exposure ------------------------------------------------------ */
+.exposure-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0 18px 12px;
+}
+.exposure-cell {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--bg-raised);
+}
+.exposure-cell span {
+  font-size: 11px;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+}
+.exposure-cell strong {
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+.exposure-cell em {
+  font-style: normal;
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+.exposure-cell.over {
+  border-color: var(--down-line);
+  background: var(--down-soft);
+}
+@media (max-width: 520px) {
+  .exposure-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.pref-row-stack {
+  flex-wrap: wrap;
+}
+.pref-row-stack .row-actions {
+  flex: 1 1 100%;
+}
+.pref-row-stack .row-actions .input {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+/* ---- Research replay ---------------------------------------------------------- */
+.replay-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 0 18px 12px;
+}
+.replay-bar .input {
+  width: auto;
+}
+.replay-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px 18px;
+  padding: 12px 18px;
+}
+.replay-info > div {
+  display: grid;
+  gap: 2px;
+}
+.replay-info strong {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 12.5px;
+}
+.replay-info em {
+  font-style: normal;
+  font-size: 11.5px;
+}
+.replay-notes {
+  margin: 0 18px 14px;
+  padding-left: 18px;
+  font-size: 12.5px;
+  color: var(--text-2);
+}

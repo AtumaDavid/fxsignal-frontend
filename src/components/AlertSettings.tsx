@@ -28,7 +28,7 @@ const EVENTS: { key: AlertGroup; label: string; hint: string }[] = [
   {
     key: 'entry',
     label: 'Entry and trade management',
-    hint: 'Entry triggered; TP1 hit (move stop to entry); TP2 hit (move stop to TP1).',
+    hint: 'Price approaching or in the entry zone; entry confirmed; TP1 hit (move stop to entry); TP2 hit (move stop to TP1).',
   },
   {
     key: 'result',
@@ -37,8 +37,8 @@ const EVENTS: { key: AlertGroup; label: string; hint: string }[] = [
   },
   {
     key: 'checkpoint',
-    label: 'Cancelled / exit suggested',
-    hint: 'The H1 checkpoint cancels a setup or suggests an early exit.',
+    label: 'Cancelled, blocked or paused',
+    hint: 'The H1 checkpoint cancels a setup or suggests an early exit; a confirmation expires or is blocked by news; a setup dies before entry; the daily loss limit pauses trading.',
   },
   {
     key: 'myTrades',
@@ -273,6 +273,16 @@ export function AlertSettings() {
           )}
         </div>
         {settings.pushAvailable && blocker && <PushHelp blocker={blocker} />}
+        <ExternalChannels
+          settings={settings}
+          onPrefs={(channels) =>
+            void save({ ...prefs, channels: { ...prefs.channels, ...channels } })
+          }
+          onDestinations={(destinations) =>
+            setSettings((s) => (s ? { ...s, destinations } : s))
+          }
+          onNotice={setNotice}
+        />
         {installable && (
           <div className="pref-row">
             <div>
@@ -327,5 +337,227 @@ export function AlertSettings() {
         </button>
       </div>
     </div>
+  );
+}
+
+/** Telegram, Discord and webhook destinations. */
+function ExternalChannels({
+  settings,
+  onPrefs,
+  onDestinations,
+  onNotice,
+}: {
+  settings: Settings;
+  onPrefs: (channels: Partial<AlertPrefs['channels']>) => void;
+  onDestinations: (d: NonNullable<Settings['destinations']>) => void;
+  onNotice: (n: { tone: 'success' | 'error'; text: string } | null) => void;
+}) {
+  const d = settings.destinations;
+  const channels = settings.prefs.channels;
+  const [discord, setDiscord] = useState('');
+  const [webhook, setWebhook] = useState(d?.webhookUrl ?? '');
+  const [busy, setBusy] = useState<string | null>(null);
+
+  async function run(key: string, fn: () => Promise<void>, ok: string) {
+    setBusy(key);
+    onNotice(null);
+    try {
+      await fn();
+      onNotice({ tone: 'success', text: ok });
+    } catch (err) {
+      onNotice({ tone: 'error', text: err instanceof Error ? err.message : 'Could not save.' });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <>
+      <div className="pref-row">
+        <div>
+          <strong>Telegram</strong>
+          <span>
+            {!settings.telegramAvailable
+              ? 'Not set up on the server yet (TELEGRAM_BOT_TOKEN and TELEGRAM_BOT_USERNAME in the API .env).'
+              : d?.telegramLinked
+                ? 'Linked. Alerts arrive in your Telegram chat; send /stop to the bot to unlink.'
+                : 'Open the link, press Start in Telegram, and alerts arrive there within a minute.'}
+          </span>
+        </div>
+        {settings.telegramAvailable &&
+          (d?.telegramLinked ? (
+            <div className="row-actions">
+              <Switch
+                label="Telegram alerts"
+                checked={channels.telegram !== false}
+                onChange={(telegram) => onPrefs({ telegram })}
+              />
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                disabled={busy !== null}
+                onClick={() =>
+                  void run(
+                    'tg',
+                    async () => {
+                      await notificationsApi.telegramUnlink();
+                      onDestinations({ ...d, telegramLinked: false });
+                    },
+                    'Telegram unlinked.'
+                  )
+                }
+              >
+                Unlink
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              disabled={busy !== null}
+              onClick={() =>
+                void run(
+                  'tg',
+                  async () => {
+                    const { url } = await notificationsApi.telegramLink();
+                    window.open(url, '_blank', 'noopener');
+                  },
+                  'Press Start in Telegram. The link works for 15 minutes.'
+                )
+              }
+            >
+              {busy === 'tg' ? <Spinner /> : null} Link Telegram
+            </button>
+          ))}
+      </div>
+
+      <div className="pref-row pref-row-stack">
+        <div>
+          <strong>Discord</strong>
+          <span>
+            {d?.discordWebhookUrl
+              ? `Posting to ${d.discordWebhookUrl}.`
+              : 'Paste a channel webhook URL (Server settings → Integrations → Webhooks).'}
+          </span>
+        </div>
+        <div className="row-actions">
+          {d?.discordWebhookUrl ? (
+            <>
+              <Switch
+                label="Discord alerts"
+                checked={channels.discord !== false}
+                onChange={(on) => onPrefs({ discord: on })}
+              />
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                disabled={busy !== null}
+                onClick={() =>
+                  void run(
+                    'dc',
+                    async () => onDestinations(await notificationsApi.saveDestinations({ discordWebhookUrl: null })),
+                    'Discord removed.'
+                  )
+                }
+              >
+                Remove
+              </button>
+            </>
+          ) : (
+            <>
+              <input
+                className="input"
+                placeholder="https://discord.com/api/webhooks/…"
+                value={discord}
+                onChange={(e) => setDiscord(e.target.value)}
+                aria-label="Discord webhook URL"
+              />
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                disabled={busy !== null || discord.trim() === ''}
+                onClick={() =>
+                  void run(
+                    'dc',
+                    async () => {
+                      onDestinations(await notificationsApi.saveDestinations({ discordWebhookUrl: discord.trim() }));
+                      setDiscord('');
+                    },
+                    'Discord added. Send a test alert to check it.'
+                  )
+                }
+              >
+                Save
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="pref-row pref-row-stack">
+        <div>
+          <strong>Webhook</strong>
+          <span>
+            {d?.webhookUrl
+              ? 'A JSON POST per alert. Verify X-FXSignal-Signature: HMAC-SHA256 of the raw body with your secret.'
+              : 'For your own bot or automation: an https URL that receives a signed JSON POST per alert.'}
+          </span>
+          {d?.webhookSecret && (
+            <code className="mono faint" style={{ fontSize: 11.5, wordBreak: 'break-all' }}>
+              Secret: {d.webhookSecret}
+            </code>
+          )}
+        </div>
+        <div className="row-actions">
+          <input
+            className="input"
+            placeholder="https://example.com/fxsignal"
+            value={webhook}
+            onChange={(e) => setWebhook(e.target.value)}
+            aria-label="Webhook URL"
+          />
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            disabled={busy !== null}
+            onClick={() =>
+              void run(
+                'wh',
+                async () =>
+                  onDestinations(
+                    await notificationsApi.saveDestinations({ webhookUrl: webhook.trim() || null })
+                  ),
+                webhook.trim() ? 'Webhook saved.' : 'Webhook removed.'
+              )
+            }
+          >
+            {webhook.trim() || !d?.webhookUrl ? 'Save' : 'Remove'}
+          </button>
+          {d?.webhookUrl && (
+            <>
+              <Switch
+                label="Webhook alerts"
+                checked={channels.webhook !== false}
+                onChange={(on) => onPrefs({ webhook: on })}
+              />
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                disabled={busy !== null}
+                onClick={() =>
+                  void run(
+                    'wh',
+                    async () => onDestinations(await notificationsApi.saveDestinations({ rotateSecret: true })),
+                    'New secret issued. Update your receiver.'
+                  )
+                }
+              >
+                New secret
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </>
   );
 }

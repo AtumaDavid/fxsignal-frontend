@@ -4,7 +4,11 @@ import { Icon } from '../../components/Icon';
 import { OutcomeTag } from '../../components/Market';
 import { SignalDrawer } from '../../components/SignalDrawer';
 import { Empty } from '../../components/ui/Empty';
-import { GuardrailBanner, GuardrailHint } from '../../components/Guardrails';
+import {
+  ExposurePanel,
+  GuardrailBanner,
+  GuardrailHint,
+} from '../../components/Guardrails';
 import {
   dayDate,
   callLabel,
@@ -249,6 +253,55 @@ export default function MyJournal() {
           </div>
         </section>
 
+        {data && (data.summary.slippageTrades || data.summary.executionGapTrades) ? (
+          <section className="panel">
+            <div className="panel-head">
+              <div>
+                <h2>Execution</h2>
+                <p>
+                  Strategy vs execution: how your fills and costs compare with
+                  the engine on the same signals
+                </p>
+              </div>
+            </div>
+            <div className="ticket-stats ticket-stats-3">
+              <div>
+                <span data-tip="Your entry against the signal's own fill. Positive = you paid more on a buy or got less on a sell.">
+                  Avg slippage
+                </span>
+                <strong className={pipClass(-(data.summary.avgSlippagePips ?? 0))}>
+                  {data.summary.avgSlippagePips == null
+                    ? '—'
+                    : `${data.summary.avgSlippagePips > 0 ? '+' : ''}${data.summary.avgSlippagePips.toFixed(2)}p`}
+                </strong>
+                <em className="faint">{data.summary.slippageTrades ?? 0} trades</em>
+              </div>
+              <div>
+                <span data-tip="Your pips minus the engine's on the same closed signals. Negative means execution (timing, slippage, early exits) cost you pips; positive means you did better than the rules.">
+                  Execution gap
+                </span>
+                <strong className={pipClass(data.summary.executionGapPips)}>
+                  {data.summary.executionGapPips == null
+                    ? '—'
+                    : `${signedPips(data.summary.executionGapPips)}p`}
+                </strong>
+                <em className="faint">{data.summary.executionGapTrades ?? 0} closed signals</em>
+              </div>
+              <div>
+                <span data-tip="Broker commission and swap from MT5, plus your configured commission on hand-logged trades.">
+                  Costs
+                </span>
+                <strong className={pipClass((data.summary.commission ?? 0) + (data.summary.swap ?? 0))}>
+                  {((data.summary.commission ?? 0) + (data.summary.swap ?? 0)).toFixed(2)}
+                </strong>
+                <em className="faint">commission + swap</em>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        <ExposurePanel />
+
         {data && data.summary.closed > 0 && (
           <>
             <div className="edge-head">
@@ -317,6 +370,12 @@ export default function MyJournal() {
                     <th>Your side</th>
                     <th className="r">Entry → exit</th>
                     <th className="r">Lots</th>
+                    <th
+                      className="r"
+                      data-tip="Your entry against the signal's own fill. + = a worse price."
+                    >
+                      Slippage
+                    </th>
                     <th className="r">Your pips</th>
                     <th>Close</th>
                     <th>Engine result</th>
@@ -369,6 +428,13 @@ export default function MyJournal() {
                             : 'open'}
                         </td>
                         <td className="r num">{t.lots ?? '—'}</td>
+                        <td
+                          className={`r num ${pipClass(t.slippagePips == null ? null : -t.slippagePips)}`}
+                        >
+                          {t.slippagePips == null
+                            ? '—'
+                            : `${t.slippagePips > 0 ? '+' : ''}${t.slippagePips.toFixed(1)}`}
+                        </td>
                         <td className={`r num ${pipClass(t.pips)}`}>
                           {t.pips === null
                             ? '—'

@@ -23,6 +23,11 @@ import type {
   BacktestReport,
   BacktestRunInfo,
   Mt5Status,
+  LiveSpreadInfo,
+  Mt5Account,
+  AlertDestinations,
+  AnalyticsReport,
+  ReplayFrame,
 } from './types';
 import type { RiskPrefs } from './guardrails';
 
@@ -221,6 +226,39 @@ const candleCache = new Map<
   { at: number; value: Promise<CandleSeries> }
 >();
 
+export interface ChartZone {
+  low: number;
+  high: number;
+  label: string;
+  score: number;
+  higherTimeframe: boolean;
+  role: 'support' | 'resistance';
+  kinds: string[];
+  timeframes: string[];
+}
+
+export interface ZoneMapResponse {
+  pair: PairCode;
+  price: number | null;
+  zones: ChartZone[];
+  /** Previous calendar month's range (context). */
+  monthly: { high: number; low: number } | null;
+}
+
+const zoneCache = new Map<string, { at: number; value: Promise<ZoneMapResponse> }>();
+
+/** The engine's zone map for a pair, from cached candles (no provider credits). */
+export function getZones(pair: PairCode) {
+  const hit = zoneCache.get(pair);
+  if (hit && Date.now() - hit.at < 120_000) return hit.value;
+  const value = request<ZoneMapResponse>(
+    `/candles/zones?pair=${encodeURIComponent(pair)}`
+  );
+  zoneCache.set(pair, { at: Date.now(), value });
+  value.catch(() => zoneCache.delete(pair));
+  return value;
+}
+
 export function getCandles(pair: PairCode, timeframe: ChartTimeframe) {
   const key = `${pair}:${timeframe}`;
   const hit = candleCache.get(key);
@@ -292,12 +330,28 @@ export const notificationsApi = {
     }),
   test: () =>
     request<void>('/notifications/test', { method: 'POST', body: {} }),
+  telegramLink: () =>
+    request<{ url: string }>('/notifications/telegram/link', {
+      method: 'POST',
+      body: {},
+    }),
+  telegramUnlink: () =>
+    request<void>('/notifications/telegram', { method: 'DELETE' }),
+  saveDestinations: (input: {
+    discordWebhookUrl?: string | null;
+    webhookUrl?: string | null;
+    rotateSecret?: boolean;
+  }) =>
+    request<AlertDestinations>('/notifications/destinations', {
+      method: 'PUT',
+      body: input,
+    }),
 };
 
 // ---- Risk guardrails ------------------------------------------------------------
 
 export const riskApi = {
-  get: () => request<{ prefs: RiskPrefs }>('/risk'),
+  get: () => request<{ prefs: RiskPrefs; mt5: Mt5Account | null }>('/risk'),
   save: (prefs: RiskPrefs) =>
     request<{ prefs: RiskPrefs }>('/risk', { method: 'PUT', body: prefs }),
 };
@@ -346,6 +400,23 @@ export const adminApi = {
     request<{ running: boolean; runs: BacktestRunInfo[] }>('/admin/backtest', {
       signal,
     }),
+  analytics: (
+    query: { source: 'live' | 'backtest'; dimension: string; days?: number },
+    signal?: AbortSignal
+  ) =>
+    request<AnalyticsReport>(
+      `/admin/analytics?${new URLSearchParams({
+        source: query.source,
+        dimension: query.dimension,
+        days: String(query.days ?? 180),
+      }).toString()}`,
+      { signal }
+    ),
+  replay: (pair: PairCode, at: string, reveal: boolean, signal?: AbortSignal) =>
+    request<ReplayFrame>(
+      `/admin/replay?${new URLSearchParams({ pair, at, reveal: reveal ? '1' : '0' }).toString()}`,
+      { signal }
+    ),
   runBacktest: (months: number) =>
     request<{ id: number }>('/admin/backtest', {
       method: 'POST',
@@ -359,6 +430,11 @@ export const adminApi = {
 };
 
 // ---- MT5 sync -------------------------------------------------------------------
+
+export const executionApi = {
+  get: (signal?: AbortSignal) =>
+    request<{ spreads: LiveSpreadInfo[] }>('/execution', { signal }),
+};
 
 export const mt5Api = {
   status: (signal?: AbortSignal) => request<Mt5Status>('/mt5', { signal }),

@@ -120,6 +120,16 @@ export function BacktestReport() {
             <span className={tone(s.netPips)}>{signedPips(s.netPips)}p</span> ·{' '}
             {signedR(s.avgR)} per trade
           </span>
+          {s.monteCarlo && (
+            <span
+              className="kpi-note"
+              data-tip="The trades resampled 2,000 times: the range the net result falls in 90% of the time, and how often it ends above zero."
+            >
+              90% range {signedR(s.monteCarlo.netR.p5)} to{' '}
+              {signedR(s.monteCarlo.netR.p95)} ·{' '}
+              {Math.round(s.monteCarlo.probProfit * 100)}% profitable
+            </span>
+          )}
         </div>
         <div className="kpi">
           <span
@@ -164,6 +174,14 @@ export function BacktestReport() {
           <span className="kpi-note">
             Longest losing run: {s.longestLosingStreak}
           </span>
+          {s.monteCarlo && (
+            <span
+              className="kpi-note"
+              data-tip="The same trades in 2,000 random orders: the drawdown that 95% of orders stay within."
+            >
+              Reshuffled, 95% within −{s.monteCarlo.maxDrawdownR.p95.toFixed(1)}R
+            </span>
+          )}
         </div>
       </section>
 
@@ -322,7 +340,16 @@ export function BacktestReport() {
           Simulated, not live: rules only (no model review); one trade per pair
           per window; a window is skipped while the pair's previous trade is
           open ({s.skippedOpen} windows); news only where the calendar was
-          stored. No spread or commission. Times in {tzLabel(timeZone)}.
+          stored.{' '}
+          {s.costPips && Object.keys(s.costPips).length > 0
+            ? `Spread and slippage deducted per trade: ${Object.entries(s.costPips)
+                .map(([pair, pips]) => `${pair} ${pips}p`)
+                .join(', ')}; no commission.`
+            : 'No spread or commission.'}{' '}
+          {s.portfolioBlocked
+            ? `${s.portfolioBlocked} calls skipped by the USD-exposure cap or daily loss limit. `
+            : ''}
+          Times in {tzLabel(timeZone)}.
         </div>
       </section>
     </div>

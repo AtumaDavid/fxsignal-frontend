@@ -21,6 +21,12 @@ const TONE: Record<string, string> = {
   CLOSED_EARLY: 'dot-flat',
   CANCELLED: 'dot-flat',
   ENTRY_FILLED: 'dot-live',
+  APPROACHING_ZONE: 'dot-live',
+  ZONE_TOUCHED: 'dot-live',
+  CONFIRMATION_EXPIRED: 'dot-flat',
+  ENTRY_BLOCKED_NEWS: 'dot-flat',
+  SETUP_VOID: 'dot-flat',
+  TRADING_PAUSED: 'dot-down',
 };
 
 /** Top-bar bell: in-app copy of every alert, so nothing is missed. */
