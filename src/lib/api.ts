@@ -176,6 +176,8 @@ export interface HistoryQuery {
   session?: string;
   days?: number;
   limit?: number;
+  /** Include Neutral stand-asides (left out by default). */
+  standAsides?: boolean;
 }
 
 export function getHistory(query: HistoryQuery = {}, signal?: AbortSignal) {
@@ -184,6 +186,7 @@ export function getHistory(query: HistoryQuery = {}, signal?: AbortSignal) {
   if (query.session) params.set('session', query.session);
   if (query.days) params.set('days', String(query.days));
   if (query.limit) params.set('limit', String(query.limit));
+  if (query.standAsides) params.set('standAsides', '1');
   const qs = params.toString();
   return request<HistoryPage>(`/history${qs ? `?${qs}` : ''}`, { signal });
 }

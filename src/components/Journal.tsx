@@ -60,6 +60,7 @@ export function Journal() {
   const [pair, setPair] = useState<'' | PairCode>('');
   const [session, setSession] = useState('');
   const [result, setResult] = useState<'' | OutcomeStatus>('');
+  const [standAsides, setStandAsides] = useState(false);
   const [page, setPage] = useState<HistoryPage | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +75,7 @@ export function Journal() {
         pair: pair || undefined,
         session: session || undefined,
         limit: 200,
+        standAsides,
       },
       controller.signal
     )
@@ -93,7 +95,7 @@ export function Journal() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [days, pair, session]);
+  }, [days, pair, session, standAsides]);
 
   const rows = useMemo(
     () =>
@@ -110,8 +112,8 @@ export function Journal() {
         <div>
           <h2>Signal history</h2>
           <p>
-            Every published signal with its levels and how the price path
-            settled it
+            Every published trade with its levels and how the price path
+            settled it. Stand-aside windows are hidden unless you show them.
           </p>
         </div>
       </div>
@@ -148,6 +150,15 @@ export function Journal() {
           options={RESULT_OPTIONS}
           minWidth={150}
         />
+        <button
+          type="button"
+          className="pchart-toggle"
+          aria-pressed={standAsides}
+          onClick={() => setStandAsides((v) => !v)}
+          data-tip="Windows where the engine stood aside (Neutral). They are not trades, so they are hidden by default."
+        >
+          Stand-asides
+        </button>
       </div>
 
       {page?.capped && (
