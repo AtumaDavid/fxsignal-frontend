@@ -26,7 +26,7 @@ import type { AnalyticsReport, PairCode, ReplayFrame } from '../lib/types';
  * not evidence for a new rule.
  */
 export function AnalyticsPanel() {
-  const [source, setSource] = useState<'live' | 'backtest'>('backtest');
+  const [source, setSource] = useState<'live' | 'backtest' | 'paper'>('backtest');
   const [dimension, setDimension] = useState('session');
   const [report, setReport] = useState<AnalyticsReport | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +60,7 @@ export function AnalyticsPanel() {
             options={[
               { value: 'backtest', label: 'Backtest' },
               { value: 'live', label: 'Live' },
+              { value: 'paper', label: 'Paper (candidate model)' },
             ]}
             active={false}
             minWidth={120}

@@ -47,6 +47,11 @@ export interface PredictionOutcome {
 
 export type ReasonCode =
   | 'CONTEXT_NEUTRAL'
+  | 'CONTEXT_SPLIT'
+  | 'CHOPPY'
+  | 'EXTREME_VOLATILITY'
+  | 'DUPLICATE_SETUP'
+  | 'H1_NOT_ALIGNED'
   | 'H1_AGAINST'
   | 'STRICT_WINDOW'
   | 'H1_NOT_REALIGNED'
@@ -745,7 +750,7 @@ export interface AnalyticsGroup {
 }
 
 export interface AnalyticsReport {
-  source: 'live' | 'backtest';
+  source: 'live' | 'backtest' | 'paper';
   dimension: string;
   dimensions: { key: string; label: string }[];
   minSample: number;

@@ -404,7 +404,7 @@ export const adminApi = {
       signal,
     }),
   analytics: (
-    query: { source: 'live' | 'backtest'; dimension: string; days?: number },
+    query: { source: 'live' | 'backtest' | 'paper'; dimension: string; days?: number },
     signal?: AbortSignal
   ) =>
     request<AnalyticsReport>(

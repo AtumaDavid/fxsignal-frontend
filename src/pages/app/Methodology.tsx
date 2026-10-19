@@ -78,8 +78,17 @@ export default function Methodology() {
               anything between <strong>Neutral</strong> (no trade).
             </li>
             <li>
+              Daily and H4 must both point the trade's way: a strong daily
+              with a flat or opposing H4 (or the reverse) is a stand-aside.
+            </li>
+            <li>
               If H1 points against that context, there is no execution that
               window: the call is published as Neutral with the reason.
+            </li>
+            <li>
+              When H1 volatility is at least twice its usual level, the engine
+              stands aside until it settles. The same setup (pair, direction
+              and structure) is not published again within six hours.
             </li>
             <li>
               Confidence (15–92%) rises when daily and H4 agree, when H1 is

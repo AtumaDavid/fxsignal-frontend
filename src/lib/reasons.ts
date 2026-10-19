@@ -3,6 +3,11 @@ import type { LifecycleStage, ReasonCode } from './types';
 /** Short labels for stand-aside and no-position reasons (mirrors the API). */
 export const REASON_LABEL: Record<ReasonCode, string> = {
   CONTEXT_NEUTRAL: 'Daily/H4 context neutral',
+  CONTEXT_SPLIT: 'Daily and H4 disagree',
+  CHOPPY: 'Choppy market',
+  EXTREME_VOLATILITY: 'Extreme volatility',
+  DUPLICATE_SETUP: 'Same setup already published',
+  H1_NOT_ALIGNED: 'H1 not aligned yet',
   H1_AGAINST: 'H1 against the context',
   STRICT_WINDOW: 'Asia: not fully aligned',
   H1_NOT_REALIGNED: 'H1 not realigned after a stop',
